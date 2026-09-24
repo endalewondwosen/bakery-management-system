@@ -1,0 +1,6 @@
+{
+  "name": "Bakery Management System",
+  "description": "Centralized internal management system for commercial bakeries, handling customer profiles, phone orders, customer-specific pricing, partial payments, debt ledgers, daily collections, expenses, deliveries, complaints, and bilingual English/Amharic reporting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
