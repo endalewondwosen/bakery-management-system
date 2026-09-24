@@ -6,7 +6,8 @@
 import React from 'react';
 import { useLanguage } from '../../i18n/useLanguage.tsx';
 import { useBakeryStore } from '../../store/bakeryStore.tsx';
-import { PhoneCall, Globe, ShieldCheck, Plus, AlertCircle } from 'lucide-react';
+import { useTheme } from '../../theme/useTheme.tsx';
+import { PhoneCall, Globe, ShieldCheck, Plus, AlertCircle, Sun, Moon } from 'lucide-react';
 import { UserRole } from '../../types/domain.ts';
 
 interface HeaderProps {
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { language, toggleLanguage, t, role, setRole } = useLanguage();
   const { pendingVerificationCount, openComplaintsCount } = useBakeryStore();
+  const { theme, isDark, toggleTheme } = useTheme();
 
   const roleLabels: Record<UserRole, { en: string; am: string }> = {
     OWNER: { en: 'Owner (Full Access)', am: 'ባለቤት (ሙሉ ፈቃድ)' },
@@ -103,11 +105,31 @@ export const Header: React.FC<HeaderProps> = ({
               </select>
             </div>
 
+            {/* Theme Switcher */}
+            <button
+              onClick={toggleTheme}
+              title={isDark ? t.themeSwitchToLight : t.themeSwitchToDark}
+              aria-label={isDark ? t.themeSwitchToLight : t.themeSwitchToDark}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-semibold transition cursor-pointer"
+            >
+              {isDark ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">{language === 'am' ? 'ብርሃን' : 'Light'}</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="hidden sm:inline">{language === 'am' ? 'ጨለማ' : 'Dark'}</span>
+                </>
+              )}
+            </button>
+
             {/* Language Switcher */}
             <button
               onClick={toggleLanguage}
               title="Switch Language / ቋንቋ ቀይር"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-semibold transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-semibold transition cursor-pointer"
             >
               <Globe className="w-3.5 h-3.5 text-amber-400" />
               <span>{language === 'am' ? 'English' : 'አማርኛ'}</span>

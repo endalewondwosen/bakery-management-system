@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { ThemeProvider } from './theme/useTheme.tsx';
 import { LanguageProvider, useLanguage } from './i18n/useLanguage.tsx';
 import { BakeryStoreProvider } from './store/bakeryStore.tsx';
 import { Header } from './components/common/Header.tsx';
@@ -227,10 +228,12 @@ const BakeryAppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <BakeryStoreProvider>
-        <BakeryAppContent />
-      </BakeryStoreProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <BakeryStoreProvider>
+          <BakeryAppContent />
+        </BakeryStoreProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

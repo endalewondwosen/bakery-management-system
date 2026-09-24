@@ -51,6 +51,11 @@ export const translations = {
     customer360: 'Customer 360°',
     currency: 'ETB',
     currencySymbol: 'Br',
+    themeMode: 'Theme',
+    themeDark: 'Dark Mode',
+    themeLight: 'Light Mode',
+    themeSwitchToLight: 'Switch to Light Mode',
+    themeSwitchToDark: 'Switch to Dark Mode',
 
     // Dashboard metrics
     todaySales: "Today's Sales",
@@ -232,6 +237,11 @@ export const translations = {
     customer360: 'የደንበኛ ሙሉ መረጃ (360°)',
     currency: 'ብር',
     currencySymbol: 'ብር',
+    themeMode: 'ገጽታ',
+    themeDark: 'የጨለማ ገጽታ',
+    themeLight: 'የብርሃን ገጽታ',
+    themeSwitchToLight: 'ወደ ብርሃን ገጽታ ቀይር',
+    themeSwitchToDark: 'ወደ ጨለማ ገጽታ ቀይር',
 
     // Dashboard metrics
     todaySales: 'የዛሬ ሽያጭ',
