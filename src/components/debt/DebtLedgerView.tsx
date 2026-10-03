@@ -13,7 +13,8 @@ import {
   Search,
   ArrowRight,
   Building,
-  CheckCircle2
+  CheckCircle2,
+  PhoneCall
 } from 'lucide-react';
 
 interface DebtLedgerViewProps {
@@ -117,8 +118,110 @@ export const DebtLedgerView: React.FC<DebtLedgerViewProps> = ({
         </div>
       </div>
 
-      {/* Debtors List Table */}
-      <div className="bg-stone-900 border border-stone-800 rounded-xl overflow-hidden shadow-sm">
+      {/* Debtors List - Mobile Cards View */}
+      <div className="block sm:hidden space-y-3">
+        {debtorList.length === 0 ? (
+          <div className="py-10 text-center text-stone-500 bg-stone-900 border border-stone-800 rounded-xl">
+            <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500/40 mb-2" />
+            <p className="text-xs">
+              {language === 'am' ? 'ምንም ያልተከፈለ ብድር ያለበት ደንበኛ የለም' : 'No outstanding customer debts found'}
+            </p>
+          </div>
+        ) : (
+          debtorList.map(({ customer, totalInvoiced, totalPaid, outstandingBalance }) => (
+            <div
+              key={customer.id}
+              className="bg-stone-900 border border-stone-800 rounded-xl p-4 space-y-3 shadow-xs"
+            >
+              {/* Header: Organization & Type */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <button
+                    onClick={() => onSelectCustomer(customer.id)}
+                    className="font-bold text-stone-100 hover:text-amber-400 text-left text-sm truncate block"
+                  >
+                    {customer.organizationName}
+                  </button>
+                  <div className="flex items-center gap-1.5 text-[11px] text-stone-400 mt-0.5">
+                    <span>{customer.name}</span>
+                    {customer.branch && (
+                      <>
+                        <span>·</span>
+                        <span className="text-stone-500">{customer.branch}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <span className="text-[10px] px-2 py-0.5 rounded bg-stone-800 text-stone-300 font-medium">
+                  {customer.customerType}
+                </span>
+              </div>
+
+              {/* Tap to Call Link */}
+              <div className="flex items-center justify-between py-1 border-y border-stone-800/80 text-xs">
+                <span className="text-stone-400">{language === 'am' ? 'ስልክ:' : 'Phone:'}</span>
+                <a
+                  href={`tel:${customer.phone}`}
+                  className="inline-flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-mono font-semibold bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 active:scale-95 transition"
+                  title={language === 'am' ? 'ለደንበኛው ደውል' : 'Call customer'}
+                >
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  <span>{customer.phone}</span>
+                </a>
+              </div>
+
+              {/* Balances Summary */}
+              <div className="grid grid-cols-2 gap-2 bg-stone-850/60 p-2.5 rounded-lg text-xs">
+                <div>
+                  <span className="text-[10px] text-stone-400 block uppercase">
+                    {language === 'am' ? 'የተከፈለ' : 'Total Paid'}
+                  </span>
+                  <span className="font-mono font-semibold text-emerald-400">
+                    {formatCurrency(totalPaid)}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-stone-400 block uppercase">
+                    {language === 'am' ? 'ያልተከፈለ ዕዳ' : 'Outstanding Debt'}
+                  </span>
+                  <span className="font-mono font-bold text-amber-400 text-sm">
+                    {outstandingBalance > 0 ? (
+                      formatCurrency(outstandingBalance)
+                    ) : (
+                      <span className="text-emerald-500 text-xs font-normal">
+                        {language === 'am' ? 'ተከፍሏል' : 'Clear'}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2 pt-1">
+                {outstandingBalance > 0 && (
+                  <button
+                    onClick={() => onOpenRecordPayment(undefined, customer.id)}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 active:scale-98 transition"
+                  >
+                    <Wallet className="w-3.5 h-3.5" />
+                    <span>{language === 'am' ? 'ገንዘብ ሰብስብ' : 'Collect Debt'}</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => onSelectCustomer(customer.id)}
+                  className="px-3 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold"
+                >
+                  {t.customer360}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Debtors List - Desktop Table View */}
+      <div className="hidden sm:block bg-stone-900 border border-stone-800 rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-stone-300">
             <thead className="bg-stone-800/80 text-stone-400 uppercase text-[10px] tracking-wider">
@@ -159,7 +262,14 @@ export const DebtLedgerView: React.FC<DebtLedgerViewProps> = ({
                     </td>
                     <td className="py-3 px-3">
                       <div className="text-stone-300">{customer.name}</div>
-                      <div className="font-mono text-stone-500 text-[11px]">{customer.phone}</div>
+                      <a
+                        href={`tel:${customer.phone}`}
+                        className="font-mono text-amber-400 hover:underline text-[11px] inline-flex items-center gap-1"
+                        title={language === 'am' ? 'ደውል' : 'Call'}
+                      >
+                        <PhoneCall className="w-3 h-3" />
+                        <span>{customer.phone}</span>
+                      </a>
                     </td>
                     <td className="py-3 px-3 text-right font-mono font-medium text-stone-300">
                       {formatCurrency(totalInvoiced)}

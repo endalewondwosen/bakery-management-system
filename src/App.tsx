@@ -9,6 +9,7 @@ import { LanguageProvider, useLanguage } from './i18n/useLanguage.tsx';
 import { BakeryStoreProvider } from './store/bakeryStore.tsx';
 import { Header } from './components/common/Header.tsx';
 import { Navigation, TabType } from './components/common/Navigation.tsx';
+import { MobileBottomNav } from './components/common/MobileBottomNav.tsx';
 import { DashboardView } from './components/dashboard/DashboardView.tsx';
 import { OrdersView } from './components/orders/OrdersView.tsx';
 import { QuickOrderModal } from './components/orders/QuickOrderModal.tsx';
@@ -83,7 +84,7 @@ const BakeryAppContent: React.FC = () => {
       />
 
       {/* Main Work Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 pb-28 sm:pb-8">
         {currentTab === 'dashboard' && (
           <DashboardView
             onOpenQuickOrder={() => handleOpenQuickOrder()}
@@ -220,6 +221,13 @@ const BakeryAppContent: React.FC = () => {
           setSelectedCustomerId(null);
           setSelectedOrderId(ordId);
         }}
+      />
+
+      {/* Mobile-First Sticky Bottom Navigation Bar */}
+      <MobileBottomNav
+        currentTab={currentTab}
+        onTabChange={setCurrentTab}
+        onOpenQuickOrder={() => handleOpenQuickOrder()}
       />
 
     </div>

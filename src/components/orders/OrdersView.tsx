@@ -210,9 +210,15 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                       </span>
                     )}
                     <span className="text-stone-500">·</span>
-                    <span className="text-stone-400 font-mono">
-                      {ord.customerPhone}
-                    </span>
+                    <a
+                      href={`tel:${ord.customerPhone}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 font-mono font-semibold bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/20 transition"
+                      title={language === 'am' ? 'ለደንበኛው ደውል' : 'Call customer'}
+                    >
+                      <PhoneCall className="w-3 h-3" />
+                      <span>{ord.customerPhone}</span>
+                    </a>
                   </div>
 
                   {/* Bread items summary */}

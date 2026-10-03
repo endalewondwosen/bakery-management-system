@@ -64,7 +64,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, onTabChange 
   ];
 
   return (
-    <nav className="bg-stone-900/95 border-b border-stone-800 text-stone-300 overflow-x-auto scrollbar-none sticky top-16 z-20 backdrop-blur-sm">
+    <nav className="hidden sm:block bg-stone-900/95 border-b border-stone-800 text-stone-300 overflow-x-auto scrollbar-none sticky top-16 z-20 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center space-x-1 py-1 min-w-max">
           {tabs.map((tab) => {

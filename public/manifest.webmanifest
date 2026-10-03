@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "Meserete Bakery Management | መሰረተ ዳቦ ቤት",
+  "short_name": "መሰረተ ዳቦ",
+  "description": "Centralized internal management system for commercial bakeries - phone orders, customer debt ledger, daily collections and delivery tracking.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c0a09",
+  "theme_color": "#1c1917",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

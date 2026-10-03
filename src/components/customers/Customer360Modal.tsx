@@ -94,13 +94,13 @@ export const Customer360Modal: React.FC<Customer360ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/80 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex sm:items-center sm:justify-center p-0 sm:p-4 bg-stone-950/85 backdrop-blur-sm overflow-hidden">
+      <div className="bg-stone-900 sm:border border-stone-800 rounded-none sm:rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden h-full sm:h-auto sm:max-h-[92vh] flex flex-col">
         
         {/* Header */}
-        <div className="px-5 py-4 border-b border-stone-800 flex items-center justify-between bg-stone-850 shrink-0">
+        <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-stone-800 flex items-center justify-between bg-stone-850 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
               <Building className="w-5 h-5" />
             </div>
             <div>
@@ -112,14 +112,25 @@ export const Customer360Modal: React.FC<Customer360ModalProps> = ({
                   {customer.customerType}
                 </span>
                 {customer.branch && (
-                  <span className="text-xs text-amber-400 font-medium">
+                  <span className="text-xs text-amber-400 font-medium hidden sm:inline">
                     · {customer.branch}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-stone-400">
-                {customer.name} · {customer.phone} · {customer.address}
-              </p>
+              <div className="text-xs text-stone-400 flex flex-wrap items-center gap-1.5 mt-0.5">
+                <span>{customer.name}</span>
+                <span>·</span>
+                <a
+                  href={`tel:${customer.phone}`}
+                  className="text-amber-400 hover:text-amber-300 font-mono font-semibold inline-flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 active:scale-95"
+                  title={language === 'am' ? 'ደውል' : 'Call'}
+                >
+                  <Phone className="w-3 h-3" />
+                  <span>{customer.phone}</span>
+                </a>
+                <span>·</span>
+                <span className="truncate max-w-[160px] sm:max-w-xs">{customer.address}</span>
+              </div>
             </div>
           </div>
 

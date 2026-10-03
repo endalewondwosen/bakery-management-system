@@ -150,11 +150,18 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                     </span>
                   </div>
 
-                  <div className="mt-2.5 space-y-1 text-stone-400 text-[11px]">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-stone-300 font-medium">{c.name}</span>
-                      <span>·</span>
-                      <span className="font-mono">{c.phone}</span>
+                  <div className="mt-2.5 space-y-1.5 text-stone-400 text-[11px]">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="text-stone-300 font-medium truncate">{c.name}</span>
+                      <a
+                        href={`tel:${c.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="font-mono text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/20 inline-flex items-center gap-1 active:scale-95 transition"
+                        title={language === 'am' ? 'ለደንበኛው ደውል' : 'Call customer'}
+                      >
+                        <PhoneCall className="w-3 h-3" />
+                        <span>{c.phone}</span>
+                      </a>
                     </div>
 
                     <div className="flex items-start gap-1.5 truncate">
