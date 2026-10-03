@@ -16,7 +16,10 @@ import {
   MapPin,
   Clock,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  Package,
+  RotateCcw
 } from 'lucide-react';
 import { DeliveryType, PaymentMethod } from '../../types/domain.ts';
 
@@ -49,6 +52,14 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
 
   const [customerSearch, setCustomerSearch] = useState<string>('');
 
+  // Active products in the bakery
+  const activeProducts = useMemo(() => {
+    return products.filter((prod) => prod.isActive);
+  }, [products]);
+
+  // Selected product IDs included in the current order form
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+
   // Selected quantities: { [productId]: quantity }
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
@@ -68,6 +79,13 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   const currentCustomer = useMemo(() => {
     return customers.find((c) => c.id === selectedCustomerId);
   }, [customers, selectedCustomerId]);
+
+  // Initialize or reset all active products when modal opens or customer changes
+  React.useEffect(() => {
+    if (isOpen) {
+      setSelectedProductIds(activeProducts.map((p) => p.id));
+    }
+  }, [isOpen, activeProducts]);
 
   // Update defaults when customer changes
   React.useEffect(() => {
@@ -108,10 +126,15 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     if (lastOrder) {
       const items = getOrderItems(lastOrder.id);
       const newQuantities: Record<string, number> = {};
+      const orderedProductIds: string[] = [];
       items.forEach((item) => {
         newQuantities[item.productId] = item.quantity;
+        orderedProductIds.push(item.productId);
       });
       setQuantities(newQuantities);
+      if (orderedProductIds.length > 0) {
+        setSelectedProductIds(orderedProductIds);
+      }
       if (lastOrder.deliveryNotes) setDeliveryNotes(lastOrder.deliveryNotes);
     }
   };
@@ -132,11 +155,51 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     }));
   };
 
+  // Remove bread type from this order
+  const handleRemoveProduct = (productId: string) => {
+    setSelectedProductIds((prev) => prev.filter((id) => id !== productId));
+    setQuantities((prev) => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
+  };
+
+  // Add bread type to this order
+  const handleAddProduct = (productId: string) => {
+    setSelectedProductIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
+  };
+
+  // Clean up all 0-quantity rows with one click
+  const handleRemoveZeroQuantity = () => {
+    const withQty = selectedProductIds.filter((id) => (quantities[id] || 0) > 0);
+    if (withQty.length > 0) {
+      setSelectedProductIds(withQty);
+    }
+  };
+
+  // Restore all active bakery bread types
+  const handleRestoreAllProducts = () => {
+    setSelectedProductIds(activeProducts.map((p) => p.id));
+  };
+
+  // Products available to be added
+  const unselectedProducts = useMemo(() => {
+    return activeProducts.filter((prod) => !selectedProductIds.includes(prod.id));
+  }, [activeProducts, selectedProductIds]);
+
+  // Check if there are some 0-qty items alongside positive ones
+  const hasZeroQtyItems = useMemo(() => {
+    const zeroCount = selectedProductIds.filter((id) => (quantities[id] || 0) === 0).length;
+    const positiveCount = selectedProductIds.filter((id) => (quantities[id] || 0) > 0).length;
+    return zeroCount > 0 && positiveCount > 0;
+  }, [selectedProductIds, quantities]);
+
   // Calculate order items and total amount
   const orderItemsData = useMemo(() => {
     if (!selectedCustomerId) return [];
-    return products
-      .filter((prod) => prod.isActive)
+    return activeProducts
+      .filter((prod) => selectedProductIds.includes(prod.id))
       .map((prod) => {
         const qty = quantities[prod.id] || 0;
         const agreed = getCustomerAgreedPrice(selectedCustomerId, prod.id);
@@ -149,7 +212,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
           subtotal,
         };
       });
-  }, [products, quantities, selectedCustomerId, getCustomerAgreedPrice]);
+  }, [activeProducts, selectedProductIds, quantities, selectedCustomerId, getCustomerAgreedPrice]);
 
   const totalCalculated = useMemo(() => {
     return orderItemsData.reduce((sum, item) => sum + item.subtotal, 0);
@@ -300,105 +363,197 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
 
           {/* Bread Products & Quantities Section */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-stone-300">
-                {t.orderItemsTitle}
-              </label>
-              <span className="text-xs text-stone-400">
-                {totalItemCount} {language === 'am' ? 'ዳቦዎች ተመርጠዋል' : 'total items'}
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-stone-300">
+                  {t.orderItemsTitle}
+                </label>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-stone-800 text-stone-400 font-mono">
+                  {orderItemsData.length} / {activeProducts.length} {language === 'am' ? 'ዓይነቶች' : 'types'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {hasZeroQtyItems && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveZeroQuantity}
+                    title={language === 'am' ? 'ብዛት 0 የሆኑትን የዳቦ ዓይነቶች ከዚህ ትዕዛዝ ያስወግዳል' : 'Remove items that have 0 quantity from this order'}
+                    className="text-[11px] text-amber-500 hover:text-amber-400 underline underline-offset-2 transition cursor-pointer"
+                  >
+                    {t.removeAllZeroQty}
+                  </button>
+                )}
+                <span className="text-xs text-stone-400 font-medium">
+                  {totalItemCount} {language === 'am' ? 'ዳቦዎች ተመርጠዋል' : 'total items'}
+                </span>
+              </div>
             </div>
 
-            <div className="space-y-2 border border-stone-800 rounded-xl divide-y divide-stone-800 bg-stone-850/40 overflow-hidden">
-              {orderItemsData.map((item) => {
-                const prod = item.product;
-                const qty = item.quantity;
-                const isSpecial = item.isAgreedPrice;
+            {/* List of included bread types */}
+            {orderItemsData.length === 0 ? (
+              <div className="p-6 text-center bg-stone-850/40 rounded-xl border border-dashed border-stone-800 space-y-3">
+                <div className="w-10 h-10 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+                  <Package className="w-5 h-5" />
+                </div>
+                <p className="text-xs text-stone-400 max-w-sm mx-auto">
+                  {t.noBreadTypesAdded}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleRestoreAllProducts}
+                  className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow transition cursor-pointer"
+                >
+                  {t.restoreAllBreadTypes}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2 border border-stone-800 rounded-xl divide-y divide-stone-800 bg-stone-850/40 overflow-hidden">
+                {orderItemsData.map((item) => {
+                  const prod = item.product;
+                  const qty = item.quantity;
+                  const isSpecial = item.isAgreedPrice;
 
-                return (
-                  <div
-                    key={prod.id}
-                    className="p-3 flex items-center justify-between gap-3 hover:bg-stone-800/30 transition text-xs"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-stone-100 text-sm">
-                          {language === 'am' ? prod.nameAm : prod.nameEn}
-                        </span>
-                        <span className="text-stone-500 text-[11px]">
-                          ({language === 'am' ? prod.nameEn : prod.nameAm})
-                        </span>
+                  return (
+                    <div
+                      key={prod.id}
+                      className="p-3 flex items-center justify-between gap-3 hover:bg-stone-800/30 transition text-xs"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-stone-100 text-sm">
+                            {language === 'am' ? prod.nameAm : prod.nameEn}
+                          </span>
+                          <span className="text-stone-500 text-[11px]">
+                            ({language === 'am' ? prod.nameEn : prod.nameAm})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-stone-300 font-medium font-mono">
+                            {formatCurrency(item.unitPrice)}
+                          </span>
+                          {isSpecial && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-800/60 font-medium">
+                              {language === 'am' ? 'የስምምነት ዋጋ' : 'Agreed Price'}
+                            </span>
+                          )}
+                          <span className="text-stone-500 text-[11px]">
+                            {language === 'am' ? 'መደበኛ:' : 'Base:'} {formatCurrency(prod.basePrice)}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-stone-300 font-medium font-mono">
-                          {formatCurrency(item.unitPrice)}
-                        </span>
-                        {isSpecial && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-800/60 font-medium">
-                            {language === 'am' ? 'የስምምነት ዋጋ' : 'Agreed Price'}
+                      {/* Quantity Stepper & Actions */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center border border-stone-700 rounded-lg overflow-hidden bg-stone-800">
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(prod.id, -10)}
+                            className="px-2 py-1.5 hover:bg-stone-700 text-stone-300 transition"
+                            title="-10"
+                          >
+                            -10
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(prod.id, -1)}
+                            className="p-1.5 hover:bg-stone-700 text-stone-300 transition"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+
+                          <input
+                            type="number"
+                            min="0"
+                            value={qty === 0 ? '' : qty}
+                            onChange={(e) => handleDirectQuantityInput(prod.id, e.target.value)}
+                            placeholder="0"
+                            className="w-14 text-center bg-transparent text-stone-100 font-mono font-bold focus:outline-none text-xs"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(prod.id, 1)}
+                            className="p-1.5 hover:bg-stone-700 text-stone-300 transition"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(prod.id, 10)}
+                            className="px-2 py-1.5 hover:bg-stone-700 text-stone-300 transition"
+                            title="+10"
+                          >
+                            +10
+                          </button>
+                        </div>
+
+                        {/* Subtotal */}
+                        <div className="w-16 sm:w-20 text-right font-mono font-bold text-stone-200">
+                          {formatCurrency(item.subtotal)}
+                        </div>
+
+                        {/* Remove bread type button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProduct(prod.id)}
+                          title={language === 'am' ? `${prod.nameAm} ከዚህ ትዕዛዝ አስወግድ` : `Remove ${prod.nameEn} from this order`}
+                          className="p-1.5 text-stone-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Flexible Add Bread Type Drawer (if some types are removed/unselected) */}
+            {unselectedProducts.length > 0 && (
+              <div className="p-3 bg-stone-900/60 border border-dashed border-stone-800 rounded-xl space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-stone-300 flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5 text-amber-500" />
+                    <span>{t.addBreadType}</span>
+                    <span className="text-[10px] text-stone-400 font-normal">
+                      ({unselectedProducts.length} {language === 'am' ? 'ሊጨመሩ የሚችሉ' : 'available'})
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRestoreAllProducts}
+                    className="text-[11px] text-amber-500 hover:text-amber-400 hover:underline cursor-pointer"
+                  >
+                    {t.restoreAllBreadTypes}
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {unselectedProducts.map((p) => {
+                    const priceInfo = getCustomerAgreedPrice(selectedCustomerId, p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => handleAddProduct(p.id)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 hover:border-amber-500/60 transition text-xs cursor-pointer group shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition" />
+                        <span className="font-medium">{language === 'am' ? p.nameAm : p.nameEn}</span>
+                        <span className="font-mono text-stone-400 text-[11px]">({formatCurrency(priceInfo.price)})</span>
+                        {priceInfo.isAgreed && (
+                          <span className="text-[9px] bg-amber-950 text-amber-400 border border-amber-800/60 px-1 py-0.2 rounded font-medium">
+                            {language === 'am' ? 'ስምምነት' : 'Agreed'}
                           </span>
                         )}
-                        <span className="text-stone-500 text-[11px]">
-                          {language === 'am' ? 'መደበኛ:' : 'Base:'} {formatCurrency(prod.basePrice)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Quantity Stepper */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="flex items-center border border-stone-700 rounded-lg overflow-hidden bg-stone-800">
-                        <button
-                          type="button"
-                          onClick={() => handleQuantityChange(prod.id, -10)}
-                          className="px-2 py-1.5 hover:bg-stone-700 text-stone-300 transition"
-                          title="-10"
-                        >
-                          -10
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuantityChange(prod.id, -1)}
-                          className="p-1.5 hover:bg-stone-700 text-stone-300 transition"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-
-                        <input
-                          type="number"
-                          min="0"
-                          value={qty === 0 ? '' : qty}
-                          onChange={(e) => handleDirectQuantityInput(prod.id, e.target.value)}
-                          placeholder="0"
-                          className="w-14 text-center bg-transparent text-stone-100 font-mono font-bold focus:outline-none text-xs"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => handleQuantityChange(prod.id, 1)}
-                          className="p-1.5 hover:bg-stone-700 text-stone-300 transition"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuantityChange(prod.id, 10)}
-                          className="px-2 py-1.5 hover:bg-stone-700 text-stone-300 transition"
-                          title="+10"
-                        >
-                          +10
-                        </button>
-                      </div>
-
-                      {/* Subtotal */}
-                      <div className="w-20 text-right font-mono font-bold text-stone-200">
-                        {formatCurrency(item.subtotal)}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Delivery Configuration */}

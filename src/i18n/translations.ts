@@ -189,6 +189,13 @@ export const translations = {
     noPaymentCredit: 'No Payment (Add to Outstanding Debt)',
     payFull: 'Pay Full Amount Now',
     payPartial: 'Pay Partial Amount Now',
+    addBreadType: '+ Add Bread Type',
+    removeBreadType: 'Remove from this order',
+    removeAllZeroQty: 'Remove 0-qty items',
+    restoreAllBreadTypes: 'Show All Products',
+    noBreadTypesAdded: 'No bread types selected for this order. Click "+ Add Bread Type" below to add.',
+    availableBreadTypes: 'Available Bread Types',
+    allBreadTypesAdded: 'All available bread types are already added',
   },
   am: {
     // App branding
@@ -375,5 +382,12 @@ export const translations = {
     noPaymentCredit: 'ምንም ክፍያ የለም (በብድር ይጻፍ)',
     payFull: 'ሙሉውን አሁን ተከፍሏል',
     payPartial: 'በከፊል አሁን ተከፍሏል',
+    addBreadType: '+ የዳቦ ዓይነት ጨምር',
+    removeBreadType: 'ከዚህ ትዕዛዝ አስወግድ',
+    removeAllZeroQty: 'ያልታዘዙትን (0 የሆኑትን) አስወግድ',
+    restoreAllBreadTypes: 'ሁሉንም የዳቦ ዓይነቶች አሳይ',
+    noBreadTypesAdded: 'ለዚህ ትዕዛዝ የተመረጠ የዳቦ ዓይነት የለም። ከታች "+ የዳቦ ዓይነት ጨምር" የሚለውን ይጫኑ።',
+    availableBreadTypes: 'ሊጨመሩ የሚችሉ የዳቦ ዓይነቶች',
+    allBreadTypesAdded: 'ሁሉም የሚገኙ የዳቦ ዓይነቶች ተካተዋል',
   }
 };
