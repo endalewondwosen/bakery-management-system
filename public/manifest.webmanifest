@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Meserete Bakery Management | መሰረተ ዳቦ ቤት",
-  "short_name": "መሰረተ ዳቦ",
+  "name": "Yibeltal Bakery Management | ይበልጣል ዳቦ ቤት",
+  "short_name": "ይበልጣል ዳቦ",
   "description": "Centralized internal management system for commercial bakeries - phone orders, customer debt ledger, daily collections and delivery tracking.",
   "start_url": "/",
   "scope": "/",

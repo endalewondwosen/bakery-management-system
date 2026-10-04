@@ -197,7 +197,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <div className="flex items-center justify-between border-b border-stone-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center font-bold text-sm">
-                  ዳ
+                  ይ
                 </div>
                 <div>
                   <h3 className="font-bold text-stone-100 text-sm">

@@ -41,12 +41,12 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Brand & Title */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-amber-600 text-stone-950 flex items-center justify-center font-bold text-xl shadow-inner shrink-0">
-              ዳ
+              ይ
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-amber-500 truncate">
-                  {language === 'am' ? 'መሰረተ ዳቦ ቤት' : 'Meserete Bakery'}
+                  {language === 'am' ? 'ይበልጣል ዳቦ ቤት' : 'Yibeltal Bakery'}
                 </h1>
                 <span className="text-xs px-2 py-0.5 rounded bg-stone-800 text-stone-400 hidden sm:inline-block">
                   {t.tagline}

@@ -7,7 +7,7 @@
   <path d="M190 220 C205 240, 205 280, 190 300" stroke="#78350f" stroke-width="14" stroke-linecap="round"/>
   <path d="M256 210 C270 240, 270 280, 256 310" stroke="#78350f" stroke-width="14" stroke-linecap="round"/>
   <path d="M322 220 C337 240, 337 280, 322 300" stroke="#78350f" stroke-width="14" stroke-linecap="round"/>
-  <!-- Amharic "ዳ" letter badge -->
+  <!-- Amharic "ይ" letter badge for Yibeltal / ይበልጣል -->
   <circle cx="256" cy="380" r="50" fill="#1c1917" stroke="#f59e0b" stroke-width="6"/>
-  <text x="256" y="398" font-family="sans-serif" font-size="44" font-weight="bold" fill="#f59e0b" text-anchor="middle">ዳ</text>
+  <text x="256" y="398" font-family="sans-serif" font-size="44" font-weight="bold" fill="#f59e0b" text-anchor="middle">ይ</text>
 </svg>
