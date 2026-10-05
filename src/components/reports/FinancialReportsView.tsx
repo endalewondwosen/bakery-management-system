@@ -87,6 +87,20 @@ export const FinancialReportsView: React.FC = () => {
     return { cash, telebirr, bank, total: cash + telebirr + bank };
   }, [payments]);
 
+  // Expense breakdown by recurrence period
+  const expensePeriodBreakdown = useMemo(() => {
+    let daily = 0;
+    let monthly = 0;
+    let yearly = 0;
+    expenses.forEach((e) => {
+      const p = e.expensePeriod || 'DAILY';
+      if (p === 'DAILY') daily += e.amount;
+      else if (p === 'MONTHLY') monthly += e.amount;
+      else yearly += e.amount;
+    });
+    return { daily, monthly, yearly, total: daily + monthly + yearly };
+  }, [expenses]);
+
   // Operational Profit vs Realized Liquidity
   const operatingProfit = totalSalesInvoiced - totalExpenses;
   const realizedNetCash = totalVerifiedCollections - totalExpenses;
@@ -338,6 +352,46 @@ export const FinancialReportsView: React.FC = () => {
               <div className="flex justify-between items-center bg-stone-850 p-2.5 rounded-lg border border-stone-800">
                 <span className="text-stone-300">{t.methodBankTransfer}</span>
                 <span className="font-mono font-bold text-sky-400">{formatCurrency(paymentMethodBreakdown.bank)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Expense Nature Breakdown: Daily vs Monthly vs Yearly */}
+          <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 space-y-3 text-xs">
+            <h4 className="font-semibold text-stone-200 flex items-center gap-1.5">
+              <Receipt className="w-4 h-4 text-rose-500" />
+              <span>{language === 'am' ? 'የወጪዎች ክፍፍል በጊዜ (ዕለታዊ / ወርሃዊ / ዓመታዊ)' : 'Expense Nature (Daily / Monthly / Yearly)'}</span>
+            </h4>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center bg-stone-850 p-2.5 rounded-lg border border-stone-800">
+                <div>
+                  <span className="text-rose-300 font-medium block">{t.dailyExpenses}</span>
+                  <span className="text-[10px] text-stone-500">
+                    {language === 'am' ? 'ዱቄት፣ ነዳጅ፣ እንቁላል፣ ጥሬ ዕቃዎች' : 'Flour, fuel, eggs & daily stock'}
+                  </span>
+                </div>
+                <span className="font-mono font-bold text-rose-400">{formatCurrency(expensePeriodBreakdown.daily)}</span>
+              </div>
+
+              <div className="flex justify-between items-center bg-stone-850 p-2.5 rounded-lg border border-stone-800">
+                <div>
+                  <span className="text-amber-300 font-medium block">{t.monthlyExpenses}</span>
+                  <span className="text-[10px] text-stone-500">
+                    {language === 'am' ? 'የሰራተኞች ደመወዝ፣ ኪራይ፣ መብራት' : 'Salaries, rent & utilities'}
+                  </span>
+                </div>
+                <span className="font-mono font-bold text-amber-400">{formatCurrency(expensePeriodBreakdown.monthly)}</span>
+              </div>
+
+              <div className="flex justify-between items-center bg-stone-850 p-2.5 rounded-lg border border-stone-800">
+                <div>
+                  <span className="text-blue-300 font-medium block">{t.yearlyExpenses}</span>
+                  <span className="text-[10px] text-stone-500">
+                    {language === 'am' ? 'ንግድ ፈቃድ እድሳት፣ ኢንሹራንስ' : 'Trade license & vehicle insurance'}
+                  </span>
+                </div>
+                <span className="font-mono font-bold text-blue-400">{formatCurrency(expensePeriodBreakdown.yearly)}</span>
               </div>
             </div>
           </div>

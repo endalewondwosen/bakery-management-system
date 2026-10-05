@@ -27,6 +27,7 @@ import { ComplaintsView } from './components/complaints/ComplaintsView.tsx';
 import { ComplaintModal } from './components/complaints/ComplaintModal.tsx';
 import { ProductsPricingView } from './components/products/ProductsPricingView.tsx';
 import { FinancialReportsView } from './components/reports/FinancialReportsView.tsx';
+import { ExpensePeriod } from './types/domain.ts';
 
 const BakeryAppContent: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
@@ -43,6 +44,7 @@ const BakeryAppContent: React.FC = () => {
   const [paymentPreselectedCustomerId, setPaymentPreselectedCustomerId] = useState<string | undefined>(undefined);
 
   const [recordExpenseOpen, setRecordExpenseOpen] = useState(false);
+  const [recordExpenseDefaultPeriod, setRecordExpenseDefaultPeriod] = useState<ExpensePeriod>('DAILY');
 
   const [complaintModalOpen, setComplaintModalOpen] = useState(false);
   const [complaintPreselectedCustomerId, setComplaintPreselectedCustomerId] = useState<string | undefined>(undefined);
@@ -135,7 +137,10 @@ const BakeryAppContent: React.FC = () => {
 
         {currentTab === 'expenses' && (
           <ExpensesView
-            onOpenRecordExpense={() => setRecordExpenseOpen(true)}
+            onOpenRecordExpense={(period) => {
+              setRecordExpenseDefaultPeriod(period || 'DAILY');
+              setRecordExpenseOpen(true);
+            }}
           />
         )}
 
@@ -183,6 +188,7 @@ const BakeryAppContent: React.FC = () => {
       <RecordExpenseModal
         isOpen={recordExpenseOpen}
         onClose={() => setRecordExpenseOpen(false)}
+        defaultPeriod={recordExpenseDefaultPeriod}
       />
 
       <ComplaintModal

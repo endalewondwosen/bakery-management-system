@@ -142,6 +142,19 @@ export type ExpenseCategory =
   | 'MAINTENANCE' 
   | 'OTHER';
 
+export type ExpensePeriod = 'DAILY' | 'MONTHLY' | 'YEARLY';
+
+export type ExpenseUnit = 
+  | 'QUINTAL'    // Quintal / Bag (ኩንታል / ጆንያ)
+  | 'KG'         // Kilogram (ኪ.ግ)
+  | 'LITER'      // Liter (ሊትር)
+  | 'CRATE'      // Crate / Tray 30pcs (ሳጥን / መደዳ)
+  | 'PIECE'      // Pieces (ፍሬ / ቁራጭ)
+  | 'BUNDLE'     // Bundle / Roll / 1000s (ጥቅል / ሺህ)
+  | 'MONTH'      // Monthly service/salary (ወር)
+  | 'YEAR'       // Annual license/insurance (ዓመት)
+  | 'LUMP_SUM';  // Flat fixed cost (ጠቅላላ ድምር)
+
 export interface Expense {
   id: string;
   date: string;
@@ -152,6 +165,10 @@ export interface Expense {
   referenceNumber?: string;
   recordedBy: string;
   notes?: string;
+  expensePeriod?: ExpensePeriod; // DAILY, MONTHLY, YEARLY
+  unit?: ExpenseUnit | string;
+  quantity?: number;
+  unitPrice?: number;
 }
 
 export type ComplaintCategory = 
