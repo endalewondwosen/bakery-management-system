@@ -283,6 +283,76 @@ export const FinancialReportsView: React.FC = () => {
         </div>
       </div>
 
+      {/* VISUAL CHART: Financial Flow Comparison Bar Graph */}
+      <div className="bg-stone-900 border border-stone-800 rounded-xl p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-800 pb-3">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-amber-500" />
+            <h3 className="text-sm font-bold text-stone-100">
+              {t.financialOverviewChart}
+            </h3>
+          </div>
+          <span className="text-xs text-stone-400 font-mono">
+            {language === 'am' ? 'የሽያጭ፣ የተሰበሰበ እና የወጪ ንጽጽር' : 'Sales vs Collections vs Expenses vs Profit'}
+          </span>
+        </div>
+
+        {/* 4 Pillars Visual Relative Horizontal Graph */}
+        <div className="space-y-3.5">
+          {(() => {
+            const maxVal = Math.max(totalSalesInvoiced, totalVerifiedCollections, totalExpenses, Math.abs(operatingProfit), 1);
+
+            const items = [
+              {
+                label: language === 'am' ? '1. የተሸጠ ጠቅላላ ዳቦ (Invoiced Sales)' : '1. Total Invoiced Sales',
+                amount: totalSalesInvoiced,
+                pct: Math.round((totalSalesInvoiced / maxVal) * 100),
+                color: 'bg-blue-500',
+                textColor: 'text-blue-400',
+              },
+              {
+                label: language === 'am' ? '2. በእጅ የተሰበሰበ ገቢ (Verified Collections)' : '2. Verified Collected Cash',
+                amount: totalVerifiedCollections,
+                pct: Math.round((totalVerifiedCollections / maxVal) * 100),
+                color: 'bg-emerald-500',
+                textColor: 'text-emerald-400',
+              },
+              {
+                label: language === 'am' ? '3. የተመዘገቡ ወጪዎች (Total Expenses)' : '3. Total Operating & Fixed Expenses',
+                amount: totalExpenses,
+                pct: Math.round((totalExpenses / maxVal) * 100),
+                color: 'bg-rose-500',
+                textColor: 'text-rose-400',
+              },
+              {
+                label: language === 'am' ? '4. የተጣራ ትርፍ (Accrual Profit)' : '4. Net Operating Margin',
+                amount: operatingProfit,
+                pct: Math.round((Math.max(0, operatingProfit) / maxVal) * 100),
+                color: operatingProfit >= 0 ? 'bg-amber-500' : 'bg-rose-700',
+                textColor: operatingProfit >= 0 ? 'text-amber-400' : 'text-rose-400',
+              },
+            ];
+
+            return items.map((item) => (
+              <div key={item.label} className="space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-stone-300 font-medium">{item.label}</span>
+                  <span className={`font-mono font-bold ${item.textColor}`}>
+                    {formatCurrency(item.amount)}
+                  </span>
+                </div>
+                <div className="h-3 w-full bg-stone-800 rounded-full overflow-hidden flex">
+                  <div
+                    style={{ width: `${Math.max(4, item.pct)}%` }}
+                    className={`h-full rounded-full transition-all duration-700 ${item.color}`}
+                  />
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+      </div>
+
       {/* Product Performance Table & Channel Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         
@@ -305,27 +375,41 @@ export const FinancialReportsView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-800">
-              {productPerformance.map(({ product, qty, revenue }) => (
-                <tr key={product.id} className="hover:bg-stone-800/30">
-                  <td className="py-2.5 px-3">
-                    <div className="font-semibold text-stone-100">
-                      {language === 'am' ? product.nameAm : product.nameEn}
-                    </div>
-                    <div className="text-[10px] text-stone-500">
-                      {language === 'am' ? product.nameEn : product.nameAm}
-                    </div>
-                  </td>
-                  <td className="py-2.5 px-3 text-center font-mono font-bold text-amber-400">
-                    {qty} pcs
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-stone-400">
-                    {formatCurrency(product.basePrice)}
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-stone-100">
-                    {formatCurrency(revenue)}
-                  </td>
-                </tr>
-              ))}
+              {productPerformance.map(({ product, qty, revenue }) => {
+                const sharePct = Math.round((revenue / (totalSalesInvoiced || 1)) * 100);
+                return (
+                  <tr key={product.id} className="hover:bg-stone-800/30">
+                    <td className="py-2.5 px-3">
+                      <div className="font-semibold text-stone-100">
+                        {language === 'am' ? product.nameAm : product.nameEn}
+                      </div>
+                      <div className="text-[10px] text-stone-500">
+                        {language === 'am' ? product.nameEn : product.nameAm}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3 text-center font-mono font-bold text-amber-400">
+                      {qty} pcs
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono text-stone-400">
+                      {formatCurrency(product.basePrice)}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono">
+                      <div className="font-bold text-stone-100">
+                        {formatCurrency(revenue)}
+                      </div>
+                      <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                        <div className="w-16 h-1.5 bg-stone-800 rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${Math.max(5, sharePct)}%` }}
+                            className="h-full bg-amber-500 rounded-full"
+                          />
+                        </div>
+                        <span className="text-[10px] text-stone-400 font-mono">{sharePct}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

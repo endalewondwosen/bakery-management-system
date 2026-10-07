@@ -172,6 +172,17 @@ export const translations = {
     calcFlat: 'Lump Sum Fixed Amount',
     autoCalculated: 'Auto Calculated',
 
+    // Visual Charts & Analytics
+    chartsAnalyticsTitle: 'Performance Trends & Visual Analytics',
+    weeklySalesTrend: '7-Day Sales & Demand Trend',
+    breadPopularity: 'Bread Variety Share',
+    cashVsDebtRatio: 'Cash Collected vs Customer Credit',
+    viewByRevenue: 'Revenue (ETB)',
+    viewByVolume: 'Breads Baked (Pcs)',
+    collectionEfficiency: 'Collection Rate',
+    financialOverviewChart: 'Financial Flow Comparison',
+    expenseDistributionChart: 'Expense Allocation by Category',
+
     // Complaint categories
     compBreadQuality: 'Bread Quality Issue',
     compWrongQuantity: 'Wrong Quantity Delivered',
@@ -393,6 +404,17 @@ export const translations = {
     calcByQuantity: 'በብዛት × በአንዱ ዋጋ አስላ',
     calcFlat: 'ቀጥታ ድምር መጠን',
     autoCalculated: 'በራስ-ሰር የተሰላ',
+
+    // Visual Charts & Analytics
+    chartsAnalyticsTitle: 'የስራ አፈጻጸም ግራፎች እና ትንታኔ',
+    weeklySalesTrend: 'የ7 ቀናት የሽያጭ እና ፍላጎት እንቅስቃሴ',
+    breadPopularity: 'የዳቦ ዓይነቶች የሽያጭ ድርሻ',
+    cashVsDebtRatio: 'የተሰበሰበ ገቢ ከደንበኞች ብድር አንጻር',
+    viewByRevenue: 'በገንዘብ (ብር)',
+    viewByVolume: 'በዳቦ ብዛት (ፍሬ)',
+    collectionEfficiency: 'የገቢ አሰባሰብ ምጣኔ',
+    financialOverviewChart: 'የፋይናንስ ፍሰት ንጽጽር ግራፍ',
+    expenseDistributionChart: 'የወጪ ክፍፍል በምድብ',
 
     // Complaint categories
     compBreadQuality: 'የዳቦ ጥራት ችግር',

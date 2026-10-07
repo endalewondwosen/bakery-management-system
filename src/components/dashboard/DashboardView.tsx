@@ -20,6 +20,7 @@ import {
   Plus
 } from 'lucide-react';
 import { OrderStatus } from '../../types/domain.ts';
+import { DashboardAnalyticsCharts } from './DashboardAnalyticsCharts.tsx';
 
 interface DashboardViewProps {
   onOpenQuickOrder: () => void;
@@ -162,6 +163,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Visual Analytics & Graphs Section */}
+      <DashboardAnalyticsCharts />
 
       {/* Daily Collections Breakdown Box (Section 21 in Requirements) */}
       <div className="bg-stone-900 border border-stone-800 rounded-xl p-5">
