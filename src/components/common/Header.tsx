@@ -7,7 +7,7 @@ import React from 'react';
 import { useLanguage } from '../../i18n/useLanguage.tsx';
 import { useBakeryStore } from '../../store/bakeryStore.tsx';
 import { useTheme } from '../../theme/useTheme.tsx';
-import { PhoneCall, Globe, ShieldCheck, Plus, AlertCircle, Sun, Moon } from 'lucide-react';
+import { PhoneCall, Globe, ShieldCheck, Plus, AlertCircle, Sun, Moon, WifiOff } from 'lucide-react';
 import { UserRole } from '../../types/domain.ts';
 
 interface HeaderProps {
@@ -24,6 +24,21 @@ export const Header: React.FC<HeaderProps> = ({
   const { language, toggleLanguage, t, role, setRole } = useLanguage();
   const { pendingVerificationCount, openComplaintsCount } = useBakeryStore();
   const { theme, isDark, toggleTheme } = useTheme();
+
+  const [isOnline, setIsOnline] = React.useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  React.useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const roleLabels: Record<UserRole, { en: string; am: string }> = {
     OWNER: { en: 'Owner (Full Access)', am: 'ባለቤት (ሙሉ ፈቃድ)' },
@@ -86,6 +101,20 @@ export const Header: React.FC<HeaderProps> = ({
                     <span>{openComplaintsCount} {t.navComplaints}</span>
                   </span>
                 )}
+              </div>
+            )}
+
+            {/* Offline Status Badge */}
+            {!isOnline && (
+              <div
+                title={language === 'am' ? 'ኢንተርኔት ተቋርጧል፡ ዳታ በስልኩ ላይ ተቀምጧል' : 'No internet: all changes safely saved on this device'}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-semibold shadow-sm animate-pulse shrink-0"
+              >
+                <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">
+                  {language === 'am' ? 'ከመስመር ውጭ (ተቀምጧል)' : 'Offline (Saved)'}
+                </span>
+                <span className="sm:hidden text-[10px]">Offline</span>
               </div>
             )}
 
