@@ -22,7 +22,8 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
-  CreditCard
+  CreditCard,
+  Truck
 } from 'lucide-react';
 import { DeliveryType, PaymentMethod } from '../../types/domain.ts';
 import { useToast } from '../common/ToastContext.tsx';
@@ -85,6 +86,9 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   const [scheduledTime, setScheduledTime] = useState<string>('');
   const [deliveryNotes, setDeliveryNotes] = useState<string>('');
 
+  // Delivery options visibility - default collapsed to keep order modal quick and tidy
+  const [showDeliveryDetails, setShowDeliveryDetails] = useState<boolean>(false);
+
   // Payment Options - default collapsed / hidden to keep order form fast & tidy
   const [showPaymentSection, setShowPaymentSection] = useState<boolean>(false);
   const [paymentOption, setPaymentOption] = useState<'NONE' | 'FULL' | 'PARTIAL'>('NONE');
@@ -101,6 +105,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   React.useEffect(() => {
     if (isOpen && defaultBurgerWithEgg) {
       setSelectedProductIds([defaultBurgerWithEgg.id]);
+      setShowDeliveryDetails(false);
       setShowPaymentSection(false);
       setPaymentOption('NONE');
     }
@@ -594,47 +599,108 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
             )}
           </div>
 
-          {/* Delivery Configuration */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <div>
-              <label className="block font-semibold text-stone-300 mb-1">
-                {language === 'am' ? 'የማድረሻ ዓይነት' : 'Delivery Method'}
-              </label>
-              <select
-                value={deliveryType}
-                onChange={(e) => setDeliveryType(e.target.value as DeliveryType)}
-                className="w-full bg-stone-800 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-100 focus:outline-none"
-              >
-                <option value="DELIVERY">{t.deliveryTypeDelivery}</option>
-                <option value="PICKUP">{t.deliveryTypePickup}</option>
-              </select>
-            </div>
+          {/* Delivery Configuration - Collapsible / Default Hidden to reduce modal bulk */}
+          <div className="bg-stone-850/90 border border-stone-800 rounded-xl overflow-hidden transition">
+            <button
+              type="button"
+              onClick={() => setShowDeliveryDetails((prev) => !prev)}
+              className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between text-left hover:bg-stone-800/50 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-500/15 text-amber-400">
+                  <Truck className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-bold text-stone-200 flex items-center gap-2 flex-wrap">
+                    <span>{language === 'am' ? 'የማድረሻ ዝርዝር' : 'Delivery Details'}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-800 text-stone-300 border border-stone-700 font-semibold">
+                      {deliveryType === 'DELIVERY' ? t.deliveryTypeDelivery : t.deliveryTypePickup}
+                    </span>
+                    {scheduledTime && (
+                      <span className="text-[11px] font-mono text-amber-400 flex items-center gap-1 font-semibold">
+                        <Clock className="w-3 h-3 text-stone-400" />
+                        {scheduledTime}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-stone-400 truncate mt-0.5 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-stone-500 shrink-0" />
+                    <span className="truncate">
+                      {deliveryType === 'PICKUP'
+                        ? (language === 'am' ? 'ከዳቦ ቤቱ መውሰድ (Pickup)' : 'Customer Pickup at Bakery')
+                        : (deliveryAddress || (language === 'am' ? 'አድራሻ አልተገለጸም' : 'No address specified'))}
+                    </span>
+                  </p>
+                </div>
+              </div>
 
-            <div>
-              <label className="block font-semibold text-stone-300 mb-1">
-                {language === 'am' ? 'የተጠየቀበት ሰዓት' : 'Scheduled Delivery Time'}
-              </label>
-              <input
-                type="text"
-                value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
-                placeholder="e.g. 07:30 AM"
-                className="w-full bg-stone-800 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-100 focus:outline-none"
-              />
-            </div>
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <span className="text-xs font-bold text-amber-500 hover:text-amber-400">
+                  {showDeliveryDetails
+                    ? (language === 'am' ? 'ደብቅ' : 'Hide')
+                    : (language === 'am' ? 'ቀይር / ዝርዝር' : 'Edit / Details')}
+                </span>
+                {showDeliveryDetails ? (
+                  <ChevronUp className="w-4 h-4 text-stone-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-stone-400" />
+                )}
+              </div>
+            </button>
 
-            <div>
-              <label className="block font-semibold text-stone-300 mb-1">
-                {language === 'am' ? 'የማድረሻ አድራሻ' : 'Delivery Address'}
-              </label>
-              <input
-                type="text"
-                value={deliveryAddress}
-                onChange={(e) => setDeliveryAddress(e.target.value)}
-                placeholder="Specific location / branch"
-                className="w-full bg-stone-800 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-100 focus:outline-none"
-              />
-            </div>
+            {/* Collapsible Delivery Form */}
+            {showDeliveryDetails && (
+              <div className="p-3.5 sm:p-4 border-t border-stone-800 bg-stone-900/60">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block font-semibold text-stone-300 mb-1">
+                      {language === 'am' ? 'የማድረሻ ዓይነት' : 'Delivery Method'}
+                    </label>
+                    <select
+                      value={deliveryType}
+                      onChange={(e) => setDeliveryType(e.target.value as DeliveryType)}
+                      className="w-full bg-stone-800 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-100 focus:outline-none"
+                    >
+                      <option value="DELIVERY">{t.deliveryTypeDelivery}</option>
+                      <option value="PICKUP">{t.deliveryTypePickup}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-stone-300 mb-1">
+                      {language === 'am' ? 'የተጠየቀበት ሰዓት' : 'Scheduled Delivery Time'}
+                    </label>
+                    <input
+                      type="text"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      placeholder="e.g. 07:30 AM"
+                      className="w-full bg-stone-800 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-100 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-stone-300 mb-1">
+                      {language === 'am' ? 'የማድረሻ አድራሻ' : 'Delivery Address'}
+                    </label>
+                    <input
+                      type="text"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder={deliveryType === 'PICKUP' ? 'N/A (Pickup)' : 'Specific location / branch'}
+                      disabled={deliveryType === 'PICKUP'}
+                      className="w-full bg-stone-800 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-100 focus:outline-none disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-stone-500 mt-2">
+                  {language === 'am'
+                    ? '💡 ነባሪ መረጃዎች ከደንበኛው መገለጫ በራስ-ሰር የተሞሉ ናቸው። ለየት ያለ ትዕዛዝ ከሆነ ብቻ እዚህ ይቀይሩ።'
+                    : '💡 Pre-filled from customer profile. Only edit here if this specific order has custom delivery requirements.'}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Payment Received at Order Card - Collapsible / Default Hidden to reduce modal bulk */}
