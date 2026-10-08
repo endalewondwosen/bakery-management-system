@@ -82,12 +82,17 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     return customers.find((c) => c.id === selectedCustomerId);
   }, [customers, selectedCustomerId]);
 
-  // Initialize or reset all active products when modal opens or customer changes
+  // Initialize with only 1 default product (or customer's preference) when modal opens
   React.useEffect(() => {
     if (isOpen) {
-      setSelectedProductIds(activeProducts.map((p) => p.id));
+      if (currentCustomer?.regularPreferences && currentCustomer.regularPreferences.length > 0) {
+        setSelectedProductIds(currentCustomer.regularPreferences.map((pref) => pref.productId));
+      } else if (activeProducts.length > 0) {
+        // Default to ONLY the 1st primary bread product
+        setSelectedProductIds([activeProducts[0].id]);
+      }
     }
-  }, [isOpen, activeProducts]);
+  }, [isOpen, activeProducts, currentCustomer]);
 
   // Update defaults when customer changes
   React.useEffect(() => {
