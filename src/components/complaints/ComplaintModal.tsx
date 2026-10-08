@@ -8,6 +8,7 @@ import { useLanguage } from '../../i18n/useLanguage.tsx';
 import { useBakeryStore } from '../../store/bakeryStore.tsx';
 import { X, MessageSquareWarning } from 'lucide-react';
 import { ComplaintCategory, ComplaintPriority } from '../../types/domain.ts';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface ComplaintModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
   preselectedCustomerId,
 }) => {
   const { t, language } = useLanguage();
+  const { showSuccess, showError } = useToast();
   const { customers, products, orders, fileComplaint } = useBakeryStore();
 
   const [customerId, setCustomerId] = useState<string>(
@@ -39,17 +41,39 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerId || !description.trim()) return;
+    if (!customerId) {
+      showError(
+        language === 'am' ? 'ደንበኛ አልተመረጠም' : 'Customer Required',
+        language === 'am' ? 'እባክዎ ደንበኛ ይምረጡ!' : 'Please select a customer!'
+      );
+      return;
+    }
 
-    fileComplaint({
+    if (!description.trim()) {
+      showError(
+        language === 'am' ? 'ማብራሪያ ያስፈልጋል' : 'Description Required',
+        language === 'am' ? 'እባክዎ የቅሬታውን ዝርዝር ማብራሪያ ያስገቡ!' : 'Please describe the customer complaint!'
+      );
+      return;
+    }
+
+    const created = fileComplaint({
       customerId,
       orderId: orderId || undefined,
       productId: productId || undefined,
       category,
       priority,
       quantityAffected: quantityAffected > 0 ? quantityAffected : undefined,
-      description,
+      description: description.trim(),
     });
+
+    const targetCustomer = customers.find((c) => c.id === customerId);
+    showSuccess(
+      language === 'am' ? 'ቅሬታ ተመዝግቧል!' : 'Complaint Filed!',
+      language === 'am'
+        ? `ቅሬታ ${created.complaintNumber} ለ${targetCustomer?.organizationName || 'ደንበኛ'} ተመዝግቧል`
+        : `Complaint ${created.complaintNumber} for ${targetCustomer?.organizationName || 'Customer'} registered`
+    );
 
     onClose();
   };

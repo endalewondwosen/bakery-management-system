@@ -8,6 +8,7 @@ import { useLanguage } from '../../i18n/useLanguage.tsx';
 import { useBakeryStore } from '../../store/bakeryStore.tsx';
 import { X, Wallet, Building, Check, AlertCircle } from 'lucide-react';
 import { PaymentMethod } from '../../types/domain.ts';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   preselectedCustomerId,
 }) => {
   const { t, formatCurrency, language } = useLanguage();
+  const { showSuccess, showError } = useToast();
   const {
     customers,
     orders,
@@ -81,12 +83,18 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCustomerId || amount <= 0) return;
+    if (!selectedCustomerId || amount <= 0) {
+      showError(
+        language === 'am' ? 'ልክ ያልሆነ መጠን' : 'Invalid Payment Amount',
+        language === 'am' ? 'እባክዎ ትክክለኛ የክፍያ መጠን ያስገቡ!' : 'Please enter a valid payment amount!'
+      );
+      return;
+    }
 
     // Use selected order or first open order
     const targetOrderId = selectedOrderId || (customerOrdersWithDebt[0]?.order.id || 'general-debt-allocation');
 
-    recordPayment({
+    const createdPayment = recordPayment({
       orderId: targetOrderId,
       customerId: selectedCustomerId,
       amount,
@@ -95,6 +103,14 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       notes: notes || undefined,
       isVerified: paymentMethod === 'CASH' ? true : markVerified,
     });
+
+    const targetCustomer = customers.find((c) => c.id === selectedCustomerId);
+    showSuccess(
+      language === 'am' ? 'ክፍያ ተመዝግቧል!' : 'Payment Recorded!',
+      language === 'am'
+        ? `የ${formatCurrency(amount)} ክፍያ ተመዝግቧል (ደረሰኝ ${createdPayment.receiptNumber} - ${targetCustomer?.organizationName || 'ደንበኛ'})`
+        : `Payment of ${formatCurrency(amount)} recorded (${createdPayment.receiptNumber} - ${targetCustomer?.organizationName || 'Customer'})`
+    );
 
     onClose();
   };

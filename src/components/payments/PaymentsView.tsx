@@ -19,6 +19,7 @@ import {
   Clock
 } from 'lucide-react';
 import { PaymentMethod, VerificationStatus } from '../../types/domain.ts';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface PaymentsViewProps {
   onOpenRecordPayment: () => void;
@@ -30,6 +31,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
   onSelectCustomer,
 }) => {
   const { t, formatCurrency, language } = useLanguage();
+  const { showSuccess, showWarning } = useToast();
   const { payments, verifyPayment, rejectPayment } = useBakeryStore();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -123,13 +125,29 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
-                    onClick={() => verifyPayment(p.id, 'Bakery Owner')}
+                    onClick={() => {
+                      verifyPayment(p.id, 'Bakery Owner');
+                      showSuccess(
+                        language === 'am' ? 'ክፍያ ተረጋገጠ!' : 'Payment Verified!',
+                        language === 'am'
+                          ? `የ${formatCurrency(p.amount)} ክፍያ ተረጋግጦ ወደ ገቢ ገብቷል (${p.customerName})`
+                          : `Payment of ${formatCurrency(p.amount)} for ${p.customerName} verified & confirmed`
+                      );
+                    }}
                     className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition cursor-pointer"
                   >
                     {t.verify}
                   </button>
                   <button
-                    onClick={() => rejectPayment(p.id)}
+                    onClick={() => {
+                      rejectPayment(p.id);
+                      showWarning(
+                        language === 'am' ? 'ክፍያ ውድቅ ተደረገ' : 'Payment Rejected',
+                        language === 'am'
+                          ? `የ${formatCurrency(p.amount)} ክፍያ ውድቅ ተደርጓል`
+                          : `Payment of ${formatCurrency(p.amount)} rejected`
+                      );
+                    }}
                     className="px-2 py-1 rounded bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs transition cursor-pointer"
                   >
                     {t.reject}

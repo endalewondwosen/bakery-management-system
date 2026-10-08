@@ -20,6 +20,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { OrderStatus } from '../../types/domain.ts';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface OrdersViewProps {
   onOpenQuickOrder: () => void;
@@ -37,6 +38,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   initialSearchQuery = '',
 }) => {
   const { t, formatCurrency, language } = useLanguage();
+  const { showSuccess } = useToast();
   const {
     orders,
     getOrderItems,
@@ -83,7 +85,8 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   const handleQuickRepeat = (e: React.MouseEvent, orderId: string) => {
     e.stopPropagation();
     const newOrd = repeatOrder(orderId);
-    alert(
+    showSuccess(
+      language === 'am' ? 'ትዕዛዝ ተደግሟል!' : 'Order Repeated!',
       language === 'am'
         ? `አዲስ ትዕዛዝ ቁጥር ${newOrd.orderNumber} በተሳካ ሁኔታ ተፈጥሯል!`
         : `Repeat order ${newOrd.orderNumber} successfully created!`

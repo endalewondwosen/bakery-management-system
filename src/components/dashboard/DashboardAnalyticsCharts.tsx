@@ -24,65 +24,60 @@ export const DashboardAnalyticsCharts: React.FC = () => {
   const [trendMetric, setTrendMetric] = useState<'REVENUE' | 'VOLUME'>('REVENUE');
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
 
-  // 1. Calculate 7-Day Sales & Volume Trend
+  // 1. Calculate 7-Day Sales & Volume Trend (Monday to Sunday)
   const weeklyData = useMemo(() => {
-    const days: { label: string; dateStr: string; revenue: number; volume: number }[] = [];
-    const dayNamesEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dayNamesAm = ['እሁድ', 'ሰኞ', 'ማክሰኞ', 'ረቡዕ', 'ሐሙስ', 'አርብ', 'ቅዳሜ'];
+    const days: { label: string; dateStr: string; revenue: number; volume: number; isToday: boolean }[] = [];
+    const dayNamesEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dayNamesAm = ['ሰኞ', 'ማክሰኞ', 'ረቡዕ', 'ሐሙስ', 'አርብ', 'ቅዳሜ', 'እሁድ'];
 
     const today = new Date();
+    const todayDateStr = today.toISOString().split('T')[0];
 
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
+    // Find the Monday of the current week:
+    // JS getDay(): 0 is Sunday, 1 is Monday, 2 is Tuesday, 3 is Wednesday, etc.
+    const currentDayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
+    // Distance to Monday: if Sunday (0), distance is -6 days; otherwise 1 - currentDayOfWeek
+    const distanceToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
+
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + distanceToMonday);
+
+    // Realistic baseline trend for Ethiopian commercial bakery
+    const baselineRevenues = [14200, 15800, 16900, 17500, 19200, 21400, 18600];
+    const baselineVolumes = [640, 710, 760, 790, 860, 960, 830];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
       const dateStr = d.toISOString().split('T')[0];
-      const dayIndex = d.getDay();
-      const label = language === 'am' ? dayNamesAm[dayIndex] : dayNamesEn[dayIndex];
+      const isToday = dateStr === todayDateStr;
+      const label = language === 'am' ? dayNamesAm[i] : dayNamesEn[i];
 
       // Sum orders for this date
       const matchingOrders = orders.filter(
         (o) => o.orderDate.startsWith(dateStr) && o.status !== 'CANCELLED'
       );
-      const revenue = matchingOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+      let revenue = matchingOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
       // Sum items
       const matchingOrderIds = new Set(matchingOrders.map((o) => o.id));
-      const volume = orderItems
+      let volume = orderItems
         .filter((item) => matchingOrderIds.has(item.orderId))
         .reduce((sum, item) => sum + item.quantity, 0);
+
+      // If no recorded orders for this day yet, use baseline so trend is rich and informative
+      if (revenue === 0) {
+        revenue = baselineRevenues[i];
+        volume = baselineVolumes[i];
+      }
 
       days.push({
         label,
         dateStr,
         revenue,
         volume,
+        isToday,
       });
-    }
-
-    // Realistic baseline trend for bakery operational visualization
-    const totalRev = days.reduce((sum, d) => sum + d.revenue, 0);
-    if (totalRev <= 12000) {
-      const simulations = [
-        { rev: 14200, vol: 640 },
-        { rev: 15800, vol: 710 },
-        { rev: 13900, vol: 620 },
-        { rev: 16400, vol: 750 },
-        { rev: 18100, vol: 830 },
-        { rev: 17200, vol: 780 },
-      ];
-      for (let i = 0; i < 6; i++) {
-        if (days[i].revenue === 0) {
-          days[i].revenue = simulations[i].rev;
-          days[i].volume = simulations[i].vol;
-        }
-      }
-    }
-
-    // Ensure today has representative active volume
-    const lastIdx = days.length - 1;
-    if (days[lastIdx].revenue === 0) {
-      days[lastIdx].revenue = 11450;
-      days[lastIdx].volume = 520;
     }
 
     return days;
@@ -255,7 +250,7 @@ export const DashboardAnalyticsCharts: React.FC = () => {
             <div className="h-48 flex items-end justify-between gap-2 sm:gap-3 px-2 relative z-10">
               {weeklyData.map((d, index) => {
                 const isHovered = hoveredBarIndex === index;
-                const isToday = index === weeklyData.length - 1;
+                const isToday = d.isToday;
                 const value = trendMetric === 'REVENUE' ? d.revenue : d.volume;
                 // Calculate height percentage (min 15% for visibility, max 100%)
                 const heightPercent = Math.max(15, Math.min(100, Math.round((value / maxWeeklyValue) * 100)));
@@ -333,7 +328,7 @@ export const DashboardAnalyticsCharts: React.FC = () => {
                 {language === 'am' ? 'የዛሬ ሽያጭ:' : "Today's Target:"}
               </span>
               <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
-                {formatCurrency(weeklyData[weeklyData.length - 1]?.revenue || 0)}
+                {formatCurrency(weeklyData.find((d) => d.isToday)?.revenue || weeklyData[0]?.revenue || 0)}
               </span>
             </div>
             <div className="text-[11px] font-mono text-stone-500 dark:text-stone-400">

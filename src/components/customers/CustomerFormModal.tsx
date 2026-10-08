@@ -8,6 +8,7 @@ import { useLanguage } from '../../i18n/useLanguage.tsx';
 import { useBakeryStore } from '../../store/bakeryStore.tsx';
 import { X, Building, User, Phone, MapPin, Clock } from 'lucide-react';
 import { CustomerType } from '../../types/domain.ts';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface CustomerFormModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
   onSuccess,
 }) => {
   const { t, language } = useLanguage();
+  const { showSuccess, showError } = useToast();
   const { addCustomer, products } = useBakeryStore();
 
   const [organizationName, setOrganizationName] = useState('');
@@ -41,25 +43,46 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!organizationName || !phone) return;
+    if (!organizationName.trim()) {
+      showError(
+        language === 'am' ? 'የድርጅት ስም ያስፈልጋል' : 'Business Name Required',
+        language === 'am' ? 'እባክዎ የደንበኛውን/ድርጅቱን ስም ያስገቡ!' : 'Please enter the customer business name!'
+      );
+      return;
+    }
+
+    if (!phone.trim()) {
+      showError(
+        language === 'am' ? 'ስልክ ቁጥር ያስፈልጋል' : 'Phone Number Required',
+        language === 'am' ? 'እባክዎ የደንበኛውን ስልክ ቁጥር ያስገቡ!' : 'Please enter the phone number!'
+      );
+      return;
+    }
 
     const regularPreferences = preferredProdId && regularQty > 0
       ? [{ productId: preferredProdId, regularQuantity: regularQty }]
       : undefined;
 
     const created = addCustomer({
-      organizationName,
-      name: name || organizationName,
-      branch: branch || undefined,
+      organizationName: organizationName.trim(),
+      name: (name || organizationName).trim(),
+      branch: branch.trim() || undefined,
       customerType,
-      phone,
-      managerPhone: managerPhone || undefined,
-      address,
+      phone: phone.trim(),
+      managerPhone: managerPhone.trim() || undefined,
+      address: address.trim(),
       status: 'ACTIVE',
       preferredDeliveryTime,
-      notes: notes || undefined,
+      notes: notes.trim() || undefined,
       regularPreferences,
     });
+
+    showSuccess(
+      language === 'am' ? 'ደንበኛ ተመዝግቧል!' : 'Customer Added!',
+      language === 'am'
+        ? `${organizationName.trim()} በተሳካ ሁኔታ ተመዝግቧል`
+        : `${organizationName.trim()} has been saved successfully`
+    );
 
     onClose();
     if (onSuccess) onSuccess(created.id);

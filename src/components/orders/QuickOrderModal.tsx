@@ -22,6 +22,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { DeliveryType, PaymentMethod } from '../../types/domain.ts';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface QuickOrderModalProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   onSuccessOrder,
 }) => {
   const { t, formatCurrency, language } = useLanguage();
+  const { showSuccess, showError } = useToast();
   const {
     customers,
     products,
@@ -235,7 +237,10 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       }));
 
     if (validItems.length === 0) {
-      alert(language === 'am' ? 'እባክዎ ቢያንስ የአንድ ዳቦ ብዛት ያስገቡ!' : 'Please enter quantity for at least one bread type!');
+      showError(
+        language === 'am' ? 'ትዕዛዝ አልተሞላም' : 'No Items Selected',
+        language === 'am' ? 'እባክዎ ቢያንስ የአንድ ዳቦ ዓይነት ብዛት ያስገቡ!' : 'Please enter quantity for at least one bread type!'
+      );
       return;
     }
 
@@ -266,6 +271,14 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       items: validItems,
       initialPayment: initialPaymentData,
     });
+
+    const targetCustomer = customers.find((c) => c.id === selectedCustomerId);
+    showSuccess(
+      language === 'am' ? 'ትዕዛዝ ተመዝግቧል!' : 'Order Created!',
+      language === 'am'
+        ? `ትዕዛዝ ${created.orderNumber} ለ${targetCustomer?.organizationName || 'ደንበኛ'} ተመዝግቧል (${formatCurrency(created.totalAmount)})`
+        : `Order ${created.orderNumber} for ${targetCustomer?.organizationName || 'Customer'} saved (${formatCurrency(created.totalAmount)})`
+    );
 
     onClose();
     if (onSuccessOrder) {

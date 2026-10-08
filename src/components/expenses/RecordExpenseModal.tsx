@@ -8,6 +8,7 @@ import { useLanguage } from '../../i18n/useLanguage.tsx';
 import { useBakeryStore } from '../../store/bakeryStore.tsx';
 import { X, Receipt, Calculator, Calendar, Tag, Layers, CheckCircle2 } from 'lucide-react';
 import { ExpenseCategory, ExpensePeriod, ExpenseUnit, PaymentMethod } from '../../types/domain.ts';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface RecordExpenseModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
   defaultPeriod = 'DAILY',
 }) => {
   const { t, language, formatCurrency } = useLanguage();
+  const { showSuccess, showError } = useToast();
   const { recordExpense } = useBakeryStore();
 
   const [expensePeriod, setExpensePeriod] = useState<ExpensePeriod>(defaultPeriod);
@@ -96,7 +98,21 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (computedTotal <= 0 || !description.trim()) return;
+    if (computedTotal <= 0) {
+      showError(
+        language === 'am' ? 'ልክ ያልሆነ የወጪ መጠን' : 'Invalid Expense Amount',
+        language === 'am' ? 'የወጪ መጠን ከ0 በላይ መሆን አለበት!' : 'Expense amount must be greater than 0!'
+      );
+      return;
+    }
+
+    if (!description.trim()) {
+      showError(
+        language === 'am' ? 'ማብራሪያ ያስፈልጋል' : 'Description Required',
+        language === 'am' ? 'እባክዎ የወጪውን ማብራሪያ ያስገቡ!' : 'Please enter an expense description!'
+      );
+      return;
+    }
 
     recordExpense({
       amount: computedTotal,
@@ -111,6 +127,13 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
       quantity: calculationMode === 'CALCULATE' && typeof quantity === 'number' ? quantity : undefined,
       unitPrice: calculationMode === 'CALCULATE' && typeof unitPrice === 'number' ? unitPrice : undefined,
     });
+
+    showSuccess(
+      language === 'am' ? 'ወጪ ተመዝግቧል!' : 'Expense Recorded!',
+      language === 'am'
+        ? `የ${formatCurrency(computedTotal)} ወጪ በተሳካ ሁኔታ ተመዝግቧል (${description.trim()})`
+        : `Expense of ${formatCurrency(computedTotal)} recorded (${description.trim()})`
+    );
 
     onClose();
   };

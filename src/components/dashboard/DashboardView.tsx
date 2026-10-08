@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { OrderStatus } from '../../types/domain.ts';
 import { DashboardAnalyticsCharts } from './DashboardAnalyticsCharts.tsx';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface DashboardViewProps {
   onOpenQuickOrder: () => void;
@@ -40,6 +41,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateTab,
 }) => {
   const { t, formatCurrency, language } = useLanguage();
+  const { showSuccess, showWarning } = useToast();
   const {
     todaySales,
     todayCollections,
@@ -279,13 +281,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
-                        onClick={() => verifyPayment(payment.id, 'Bakery Owner')}
+                        onClick={() => {
+                          verifyPayment(payment.id, 'Bakery Owner');
+                          showSuccess(
+                            language === 'am' ? 'ክፍያ ተረጋገጠ!' : 'Payment Verified!',
+                            language === 'am'
+                              ? `የ${formatCurrency(payment.amount)} ክፍያ ተረጋግጧል (${payment.customerName})`
+                              : `Payment of ${formatCurrency(payment.amount)} for ${payment.customerName} verified & confirmed`
+                          );
+                        }}
                         className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-sm transition"
                       >
                         {t.verify}
                       </button>
                       <button
-                        onClick={() => rejectPayment(payment.id)}
+                        onClick={() => {
+                          rejectPayment(payment.id);
+                          showWarning(
+                            language === 'am' ? 'ክፍያ ውድቅ ተደረገ' : 'Payment Rejected',
+                            language === 'am'
+                              ? `የ${formatCurrency(payment.amount)} ክፍያ ውድቅ ተደርጓል`
+                              : `Payment of ${formatCurrency(payment.amount)} rejected`
+                          );
+                        }}
                         className="px-2 py-1 rounded bg-stone-700 hover:bg-stone-600 text-stone-300 text-xs transition"
                       >
                         {t.reject}

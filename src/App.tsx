@@ -28,6 +28,7 @@ import { ComplaintModal } from './components/complaints/ComplaintModal.tsx';
 import { ProductsPricingView } from './components/products/ProductsPricingView.tsx';
 import { FinancialReportsView } from './components/reports/FinancialReportsView.tsx';
 import { ExpensePeriod } from './types/domain.ts';
+import { ToastProvider } from './components/common/ToastContext.tsx';
 
 const BakeryAppContent: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
@@ -245,7 +246,9 @@ export default function App() {
     <ThemeProvider>
       <LanguageProvider>
         <BakeryStoreProvider>
-          <BakeryAppContent />
+          <ToastProvider>
+            <BakeryAppContent />
+          </ToastProvider>
         </BakeryStoreProvider>
       </LanguageProvider>
     </ThemeProvider>
