@@ -107,60 +107,68 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 4 Core Financial Metrics */}
+      {/* 4 Core Financial Metrics - Ergonomic High Glanceability Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Today's Sales */}
-        <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 shadow-sm hover:border-stone-700 transition">
-          <div className="flex items-center justify-between text-stone-400 text-xs font-semibold mb-2">
-            <span>{t.todaySales}</span>
-            <TrendingUp className="w-4 h-4 text-amber-500" />
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-sm hover:border-amber-500/50 transition">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-bold text-stone-300 dark:text-stone-300">{t.todaySales}</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-stone-100 tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-stone-100 font-mono tracking-tight">
             {formatCurrency(todaySales)}
           </div>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-stone-400 font-medium mt-1">
             {language === 'am' ? 'የተመዘገቡ የዕለቱ ትዕዛዞች ድምር' : 'Total value of orders logged today'}
           </p>
         </div>
 
         {/* Metric 2: Today's Collections */}
-        <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 shadow-sm hover:border-stone-700 transition">
-          <div className="flex items-center justify-between text-stone-400 text-xs font-semibold mb-2">
-            <span>{t.todayCollections}</span>
-            <Wallet className="w-4 h-4 text-emerald-500" />
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-sm hover:border-emerald-500/50 transition">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-bold text-stone-300 dark:text-stone-300">{t.todayCollections}</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+              <Wallet className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-400 tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tracking-tight">
             {formatCurrency(todayCollections.total)}
           </div>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-stone-400 font-medium mt-1">
             {language === 'am' ? 'በጥሬ እና በተረጋገጠ ባንክ/ቴሌብር የገባ' : 'Cash + Verified Telebirr/Bank'}
           </p>
         </div>
 
         {/* Metric 3: Total Outstanding Debt */}
-        <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 shadow-sm hover:border-stone-700 transition">
-          <div className="flex items-center justify-between text-stone-400 text-xs font-semibold mb-2">
-            <span>{t.outstandingReceivables}</span>
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-sm hover:border-amber-500/50 transition">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-bold text-stone-300 dark:text-stone-300">{t.outstandingReceivables}</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-amber-400 tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 font-mono tracking-tight">
             {formatCurrency(totalOutstandingDebt)}
           </div>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-stone-400 font-medium mt-1">
             {language === 'am' ? 'በደንበኞች ላይ ያለ ቀሪ የብድር ሂሳብ' : 'Total uncollected customer balances'}
           </p>
         </div>
 
         {/* Metric 4: Today's Expenses */}
-        <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 shadow-sm hover:border-stone-700 transition">
-          <div className="flex items-center justify-between text-stone-400 text-xs font-semibold mb-2">
-            <span>{t.todayExpenses}</span>
-            <Receipt className="w-4 h-4 text-rose-500" />
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-sm hover:border-rose-500/50 transition">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-bold text-stone-300 dark:text-stone-300">{t.todayExpenses}</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center">
+              <Receipt className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-rose-400 tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-rose-400 font-mono tracking-tight">
             {formatCurrency(todayExpensesTotal)}
           </div>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-stone-400 font-medium mt-1">
             {language === 'am' ? 'ዱቄት፣ እንቁላል፣ ነዳጅ እና ሌሎች ወጪዎች' : 'Flour, eggs, fuel & operations'}
           </p>
         </div>

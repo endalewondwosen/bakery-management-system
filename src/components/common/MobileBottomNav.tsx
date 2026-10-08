@@ -94,14 +94,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={() => onTabChange('orders')}
             className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition ${
               currentTab === 'orders'
-                ? 'text-amber-400 font-bold'
+                ? 'text-amber-500 font-extrabold'
                 : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             <div className="relative">
               <ShoppingBag className="w-5 h-5" />
             </div>
-            <span className="text-[10px] mt-1 tracking-tight truncate max-w-[64px]">
+            <span className="text-[11px] sm:text-xs mt-1 font-semibold tracking-tight truncate max-w-[64px]">
               {language === 'am' ? 'ትዕዛዞች' : 'Orders'}
             </span>
           </button>
@@ -112,33 +112,33 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={() => onTabChange('collections')}
             className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition ${
               currentTab === 'collections'
-                ? 'text-amber-400 font-bold'
+                ? 'text-amber-500 font-extrabold'
                 : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             <div className="relative">
               <BadgeDollarSign className="w-5 h-5" />
               {pendingVerificationCount > 0 && (
-                <span className="absolute -top-1 -right-2 w-3.5 h-3.5 bg-amber-500 text-stone-950 font-bold text-[9px] rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-2 w-4 h-4 bg-amber-500 text-stone-950 font-extrabold text-[10px] rounded-full flex items-center justify-center">
                   {pendingVerificationCount}
                 </span>
               )}
             </div>
-            <span className="text-[10px] mt-1 tracking-tight truncate max-w-[64px]">
+            <span className="text-[11px] sm:text-xs mt-1 font-semibold tracking-tight truncate max-w-[64px]">
               {language === 'am' ? 'የቀን ገቢ' : 'Collect'}
             </span>
           </button>
 
           {/* Center Floating Quick Order Action */}
-          <div className="flex-1 flex justify-center -mt-5">
+          <div className="flex-1 flex justify-center -mt-6">
             <button
               type="button"
               onClick={onOpenQuickOrder}
-              className="w-13 h-13 rounded-full bg-linear-to-tr from-amber-600 to-amber-400 text-stone-950 flex flex-col items-center justify-center shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-95 transition cursor-pointer border-4 border-stone-950"
+              className="w-14 h-14 rounded-full bg-linear-to-tr from-amber-600 via-amber-500 to-amber-400 text-stone-950 flex flex-col items-center justify-center shadow-xl shadow-amber-500/40 hover:scale-105 active:scale-95 transition cursor-pointer border-4 border-stone-950"
               title={t.quickOrderTitle}
             >
               <PhoneCall className="w-5 h-5" />
-              <span className="text-[8px] font-black tracking-tight leading-none mt-0.5">
+              <span className="text-[9px] font-black tracking-tight leading-none mt-0.5">
                 {language === 'am' ? '+ትዕዛዝ' : '+Order'}
               </span>
             </button>
@@ -150,12 +150,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={() => onTabChange('debt')}
             className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition ${
               currentTab === 'debt'
-                ? 'text-amber-400 font-bold'
+                ? 'text-amber-500 font-extrabold'
                 : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             <BookOpenText className="w-5 h-5" />
-            <span className="text-[10px] mt-1 tracking-tight truncate max-w-[64px]">
+            <span className="text-[11px] sm:text-xs mt-1 font-semibold tracking-tight truncate max-w-[64px]">
               {language === 'am' ? 'ብድር' : 'Debts'}
             </span>
           </button>
@@ -166,17 +166,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={() => setDrawerOpen(true)}
             className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition ${
               drawerOpen || !['orders', 'collections', 'debt'].includes(currentTab)
-                ? 'text-amber-400 font-bold'
+                ? 'text-amber-500 font-extrabold'
                 : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             <div className="relative">
               <Menu className="w-5 h-5" />
               {openComplaintsCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full" />
               )}
             </div>
-            <span className="text-[10px] mt-1 tracking-tight truncate max-w-[64px]">
+            <span className="text-[11px] sm:text-xs mt-1 font-semibold tracking-tight truncate max-w-[64px]">
               {language === 'am' ? 'ተጨማሪ' : 'More'}
             </span>
           </button>

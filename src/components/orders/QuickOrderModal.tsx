@@ -442,40 +442,40 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                   return (
                     <div
                       key={prod.id}
-                      className="p-3 flex items-center justify-between gap-3 hover:bg-stone-800/30 transition text-xs"
+                      className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-stone-800/30 transition rounded-xl"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-stone-100 text-sm">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-stone-900 dark:text-stone-100 text-sm sm:text-base">
                             {language === 'am' ? prod.nameAm : prod.nameEn}
                           </span>
-                          <span className="text-stone-500 text-[11px]">
+                          <span className="text-stone-500 dark:text-stone-400 text-xs">
                             ({language === 'am' ? prod.nameEn : prod.nameAm})
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-stone-300 font-medium font-mono">
+                        <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
+                          <span className="text-stone-800 dark:text-stone-200 font-bold font-mono text-sm">
                             {formatCurrency(item.unitPrice)}
                           </span>
                           {isSpecial && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-800/60 font-medium">
+                            <span className="text-xs px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold">
                               {language === 'am' ? 'የስምምነት ዋጋ' : 'Agreed Price'}
                             </span>
                           )}
-                          <span className="text-stone-500 text-[11px]">
+                          <span className="text-stone-500 dark:text-stone-400 text-xs">
                             {language === 'am' ? 'መደበኛ:' : 'Base:'} {formatCurrency(prod.basePrice)}
                           </span>
                         </div>
                       </div>
 
-                      {/* Quantity Stepper & Actions */}
-                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                        <div className="flex items-center border border-stone-700 rounded-lg overflow-hidden bg-stone-800">
+                      {/* Quantity Stepper & Actions - Ergonomic 44px+ touch targets */}
+                      <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-800">
+                        <div className="flex items-center border-2 border-stone-700 rounded-xl overflow-hidden bg-stone-800/90 shadow-xs">
                           <button
                             type="button"
                             onClick={() => handleQuantityChange(prod.id, -10)}
-                            className="h-10 sm:h-8 px-2.5 sm:px-2 hover:bg-stone-700 text-stone-300 transition text-xs font-bold"
+                            className="h-11 sm:h-10 px-3 hover:bg-stone-700 text-stone-200 transition text-xs sm:text-sm font-bold active:scale-95 cursor-pointer"
                             title="-10"
                           >
                             -10
@@ -483,9 +483,10 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                           <button
                             type="button"
                             onClick={() => handleQuantityChange(prod.id, -1)}
-                            className="h-10 sm:h-8 w-9 sm:w-8 flex items-center justify-center hover:bg-stone-700 text-stone-300 transition"
+                            className="h-11 sm:h-10 w-11 sm:w-10 flex items-center justify-center hover:bg-stone-700 text-stone-200 transition active:scale-95 cursor-pointer"
+                            title="-1"
                           >
-                            <Minus className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                            <Minus className="w-4 h-4" />
                           </button>
 
                           <input
@@ -494,20 +495,21 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                             value={qty === 0 ? '' : qty}
                             onChange={(e) => handleDirectQuantityInput(prod.id, e.target.value)}
                             placeholder="0"
-                            className="w-13 sm:w-14 h-10 sm:h-8 text-center bg-transparent text-stone-100 font-mono font-bold focus:outline-none text-sm sm:text-xs"
+                            className="w-16 sm:w-18 h-11 sm:h-10 text-center bg-stone-900 text-stone-100 font-mono font-extrabold focus:outline-none text-base border-x border-stone-700"
                           />
 
                           <button
                             type="button"
                             onClick={() => handleQuantityChange(prod.id, 1)}
-                            className="h-10 sm:h-8 w-9 sm:w-8 flex items-center justify-center hover:bg-stone-700 text-stone-300 transition"
+                            className="h-11 sm:h-10 w-11 sm:w-10 flex items-center justify-center hover:bg-stone-700 text-stone-200 transition active:scale-95 cursor-pointer"
+                            title="+1"
                           >
-                            <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                            <Plus className="w-4 h-4" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleQuantityChange(prod.id, 10)}
-                            className="h-10 sm:h-8 px-2.5 sm:px-2 hover:bg-stone-700 text-stone-300 transition text-xs font-bold"
+                            className="h-11 sm:h-10 px-3 hover:bg-stone-700 text-stone-200 transition text-xs sm:text-sm font-bold active:scale-95 cursor-pointer"
                             title="+10"
                           >
                             +10
@@ -515,7 +517,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                         </div>
 
                         {/* Subtotal */}
-                        <div className="w-16 sm:w-20 text-right font-mono font-bold text-stone-200 text-xs sm:text-xs">
+                        <div className="min-w-[70px] sm:w-24 text-right font-mono font-extrabold text-amber-500 dark:text-amber-400 text-sm sm:text-base">
                           {formatCurrency(item.subtotal)}
                         </div>
 
@@ -524,7 +526,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                           type="button"
                           onClick={() => handleRemoveProduct(prod.id)}
                           title={language === 'am' ? `${prod.nameAm} ከዚህ ትዕዛዝ አስወግድ` : `Remove ${prod.nameEn} from this order`}
-                          className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center text-stone-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                          className="w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center text-stone-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -749,19 +751,19 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
         {/* Modal Footer - Sticky on Mobile */}
         <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-t border-stone-800 bg-stone-900 sm:bg-stone-850 flex items-center justify-between gap-3 shrink-0 shadow-lg safe-area-bottom">
           <div>
-            <div className="text-[10px] sm:text-xs text-stone-400">
+            <div className="text-xs text-stone-500 dark:text-stone-400 font-medium">
               {language === 'am' ? 'የትዕዛዝ ድምር:' : 'Order Total:'}
             </div>
-            <div className="text-lg sm:text-xl font-bold text-amber-400 font-mono">
+            <div className="text-xl sm:text-2xl font-black text-amber-500 dark:text-amber-400 font-mono tracking-tight">
               {formatCurrency(totalCalculated)}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold transition"
+              className="min-h-[44px] px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs sm:text-sm font-bold transition cursor-pointer"
             >
               {t.cancel}
             </button>
@@ -769,7 +771,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
               type="button"
               onClick={handleSubmit}
               disabled={totalCalculated === 0}
-              className="px-4 sm:px-5 py-2.5 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed text-stone-950 text-xs sm:text-sm font-bold transition shadow-md"
+              className="min-h-[44px] px-5 sm:px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-stone-950 text-sm sm:text-base font-extrabold transition shadow-lg shadow-amber-500/20 cursor-pointer"
             >
               {language === 'am' ? 'ትዕዛዝ መዝግብ' : 'Confirm Order'}
             </button>

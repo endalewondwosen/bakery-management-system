@@ -90,10 +90,27 @@ html.light ::selection {
 /* Smooth transition when toggling theme */
 html {
   transition: background-color 0.2s ease, color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 body {
   font-family: 'Plus Jakarta Sans', 'Noto Sans Ethiopic', system-ui, -apple-system, sans-serif;
   background-color: var(--color-stone-950);
   color: var(--color-stone-100);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* Enhanced Amharic font line-height and readability */
+html[lang="am"], [data-language="am"] {
+  font-family: 'Noto Sans Ethiopic', 'Plus Jakarta Sans', system-ui, sans-serif;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+
+/* Ergonomic touch targets for interactive inputs */
+button, select, input, a {
+  touch-action: manipulation;
 }

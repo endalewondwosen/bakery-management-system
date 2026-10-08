@@ -138,58 +138,58 @@ export const DebtLedgerView: React.FC<DebtLedgerViewProps> = ({
                 <div className="min-w-0 flex-1">
                   <button
                     onClick={() => onSelectCustomer(customer.id)}
-                    className="font-bold text-stone-100 hover:text-amber-400 text-left text-sm truncate block"
+                    className="font-extrabold text-stone-100 hover:text-amber-400 text-left text-base truncate block"
                   >
                     {customer.organizationName}
                   </button>
-                  <div className="flex items-center gap-1.5 text-[11px] text-stone-400 mt-0.5">
-                    <span>{customer.name}</span>
+                  <div className="flex items-center gap-1.5 text-xs text-stone-400 mt-0.5">
+                    <span className="font-medium">{customer.name}</span>
                     {customer.branch && (
                       <>
                         <span>·</span>
-                        <span className="text-stone-500">{customer.branch}</span>
+                        <span className="text-stone-400 font-medium">{customer.branch}</span>
                       </>
                     )}
                   </div>
                 </div>
 
-                <span className="text-[10px] px-2 py-0.5 rounded bg-stone-800 text-stone-300 font-medium">
+                <span className="text-xs px-2.5 py-1 rounded-lg bg-stone-800 text-stone-300 font-bold border border-stone-700/60 shrink-0">
                   {customer.customerType}
                 </span>
               </div>
 
-              {/* Tap to Call Link */}
-              <div className="flex items-center justify-between py-1 border-y border-stone-800/80 text-xs">
-                <span className="text-stone-400">{language === 'am' ? 'ስልክ:' : 'Phone:'}</span>
+              {/* Tap to Call Link - 44px touch target */}
+              <div className="flex items-center justify-between py-1.5 border-y border-stone-800/80 text-xs">
+                <span className="text-stone-400 font-medium">{language === 'am' ? 'ስልክ:' : 'Phone:'}</span>
                 <a
                   href={`tel:${customer.phone}`}
-                  className="inline-flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-mono font-semibold bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 active:scale-95 transition"
+                  className="inline-flex items-center gap-2 text-amber-400 hover:text-amber-300 font-mono font-bold bg-amber-500/10 px-3 py-1.5 min-h-[38px] rounded-xl border border-amber-500/30 active:scale-95 transition"
                   title={language === 'am' ? 'ለደንበኛው ደውል' : 'Call customer'}
                 >
-                  <PhoneCall className="w-3.5 h-3.5" />
+                  <PhoneCall className="w-4 h-4" />
                   <span>{customer.phone}</span>
                 </a>
               </div>
 
-              {/* Balances Summary */}
-              <div className="grid grid-cols-2 gap-2 bg-stone-850/60 p-2.5 rounded-lg text-xs">
+              {/* Balances Summary - Large legible numbers */}
+              <div className="grid grid-cols-2 gap-2 bg-stone-850/80 p-3 rounded-xl border border-stone-800 text-xs">
                 <div>
-                  <span className="text-[10px] text-stone-400 block uppercase">
+                  <span className="text-xs text-stone-400 block font-semibold uppercase">
                     {language === 'am' ? 'የተከፈለ' : 'Total Paid'}
                   </span>
-                  <span className="font-mono font-semibold text-emerald-400">
+                  <span className="font-mono font-bold text-emerald-400 text-sm mt-0.5 block">
                     {formatCurrency(totalPaid)}
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] text-stone-400 block uppercase">
+                  <span className="text-xs text-stone-400 block font-semibold uppercase">
                     {language === 'am' ? 'ያልተከፈለ ዕዳ' : 'Outstanding Debt'}
                   </span>
-                  <span className="font-mono font-bold text-amber-400 text-sm">
+                  <span className="font-mono font-black text-amber-400 text-base mt-0.5 block">
                     {outstandingBalance > 0 ? (
                       formatCurrency(outstandingBalance)
                     ) : (
-                      <span className="text-emerald-500 text-xs font-normal">
+                      <span className="text-emerald-400 text-xs font-bold">
                         {language === 'am' ? 'ተከፍሏል' : 'Clear'}
                       </span>
                     )}
@@ -202,7 +202,7 @@ export const DebtLedgerView: React.FC<DebtLedgerViewProps> = ({
                 {outstandingBalance > 0 && (
                   <button
                     onClick={() => onOpenRecordPayment(undefined, customer.id)}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 active:scale-98 transition"
+                    className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 active:scale-95 transition cursor-pointer"
                   >
                     <Wallet className="w-3.5 h-3.5" />
                     <span>{language === 'am' ? 'ገንዘብ ሰብስብ' : 'Collect Debt'}</span>
