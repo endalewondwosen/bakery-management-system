@@ -19,7 +19,10 @@ import {
   AlertCircle,
   Trash2,
   Package,
-  RotateCcw
+  RotateCcw,
+  ChevronDown,
+  ChevronUp,
+  CreditCard
 } from 'lucide-react';
 import { DeliveryType, PaymentMethod } from '../../types/domain.ts';
 import { useToast } from '../common/ToastContext.tsx';
@@ -59,7 +62,19 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     return products.filter((prod) => prod.isActive);
   }, [products]);
 
-  // Selected product IDs included in the current order form
+  // Primary default bread product: "Burger Bread With Egg" (እንቁላል የተቀባ)
+  const defaultBurgerWithEgg = useMemo(() => {
+    return (
+      activeProducts.find(
+        (p) =>
+          p.id === 'prod-1' ||
+          p.nameEn.toLowerCase().includes('egg') ||
+          p.nameAm.includes('እንቁላል የተቀባ')
+      ) || activeProducts[0]
+    );
+  }, [activeProducts]);
+
+  // Selected product IDs included in the current order form - default to ONLY 1 (Burger with egg)
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
   // Selected quantities: { [productId]: quantity }
@@ -69,9 +84,9 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [scheduledTime, setScheduledTime] = useState<string>('');
   const [deliveryNotes, setDeliveryNotes] = useState<string>('');
-  const [orderNotes, setOrderNotes] = useState<string>('');
 
-  // Payment Options
+  // Payment Options - default collapsed / hidden to keep order form fast & tidy
+  const [showPaymentSection, setShowPaymentSection] = useState<boolean>(false);
   const [paymentOption, setPaymentOption] = useState<'NONE' | 'FULL' | 'PARTIAL'>('NONE');
   const [partialAmount, setPartialAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
@@ -82,36 +97,32 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     return customers.find((c) => c.id === selectedCustomerId);
   }, [customers, selectedCustomerId]);
 
-  // Initialize with only 1 default product (or customer's preference) when modal opens
+  // Initialize with ONLY 1 default product (Burger with egg) when modal opens
   React.useEffect(() => {
-    if (isOpen) {
-      if (currentCustomer?.regularPreferences && currentCustomer.regularPreferences.length > 0) {
-        setSelectedProductIds(currentCustomer.regularPreferences.map((pref) => pref.productId));
-      } else if (activeProducts.length > 0) {
-        // Default to ONLY the 1st primary bread product
-        setSelectedProductIds([activeProducts[0].id]);
-      }
+    if (isOpen && defaultBurgerWithEgg) {
+      setSelectedProductIds([defaultBurgerWithEgg.id]);
+      setShowPaymentSection(false);
+      setPaymentOption('NONE');
     }
-  }, [isOpen, activeProducts, currentCustomer]);
+  }, [isOpen, defaultBurgerWithEgg]);
 
   // Update defaults when customer changes
   React.useEffect(() => {
-    if (currentCustomer) {
+    if (currentCustomer && defaultBurgerWithEgg) {
       setDeliveryAddress(currentCustomer.address || '');
       setScheduledTime(currentCustomer.preferredDeliveryTime || '07:30 AM');
 
-      // Populate default regular preferences if no quantities chosen yet
-      if (currentCustomer.regularPreferences && currentCustomer.regularPreferences.length > 0) {
-        const initialMap: Record<string, number> = {};
-        currentCustomer.regularPreferences.forEach((pref) => {
-          initialMap[pref.productId] = pref.regularQuantity;
-        });
-        setQuantities(initialMap);
+      // Populate quantity for the default product if customer has a preference, or default to 0
+      const eggPref = currentCustomer.regularPreferences?.find(
+        (pref) => pref.productId === defaultBurgerWithEgg.id
+      );
+      if (eggPref) {
+        setQuantities({ [defaultBurgerWithEgg.id]: eggPref.regularQuantity });
       } else {
         setQuantities({});
       }
     }
-  }, [currentCustomer]);
+  }, [currentCustomer, defaultBurgerWithEgg]);
 
   // Filtered customer list for search
   const filteredCustomers = useMemo(() => {
@@ -272,7 +283,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       deliveryAddress,
       scheduledTime,
       deliveryNotes,
-      notes: orderNotes,
+      notes: '',
       items: validItems,
       initialPayment: initialPaymentData,
     });
@@ -626,124 +637,171 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
             </div>
           </div>
 
-          {/* Initial Payment Options */}
-          <div className="bg-stone-850 border border-stone-800 rounded-xl p-3.5 space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-stone-200">
-                {t.initialPaymentOption}
-              </label>
-              <span className="text-xs text-amber-400 font-bold font-mono">
-                {language === 'am' ? 'ጠቅላላ ሂሳብ:' : 'Order Total:'} {formatCurrency(totalCalculated)}
-              </span>
-            </div>
+          {/* Payment Received at Order Card - Collapsible / Default Hidden to reduce modal bulk */}
+          <div className="bg-stone-850/90 border border-stone-800 rounded-xl overflow-hidden transition">
+            <button
+              type="button"
+              onClick={() => setShowPaymentSection((prev) => !prev)}
+              className="w-full px-3.5 sm:px-4 py-3 flex items-center justify-between text-left hover:bg-stone-800/50 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    paymentOption !== 'NONE'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-stone-800 text-stone-400'
+                  }`}
+                >
+                  <CreditCard className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-stone-200 flex items-center gap-2">
+                    <span>
+                      {language === 'am'
+                        ? 'በትዕዛዙ ወቅት የተከፈለ ክፍያ አለ? (አማራጭ)'
+                        : 'Payment Received at Order? (Optional)'}
+                    </span>
+                    {paymentOption !== 'NONE' && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">
+                        {paymentOption === 'FULL'
+                          ? (language === 'am' ? 'ሙሉ ክፍያ' : 'Full Paid')
+                          : (language === 'am' ? 'ከፊል ክፍያ' : 'Partial Paid')}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-stone-400">
+                    {paymentOption === 'NONE'
+                      ? (language === 'am'
+                          ? 'ነባሪ፡ ያለቅድመ ክፍያ (ዕዳ / ሲደርስ የሚከፈል)'
+                          : 'Default: No upfront payment (Credit / Pay on delivery)')
+                      : (language === 'am'
+                          ? `${formatCurrency(paymentOption === 'FULL' ? totalCalculated : partialAmount)} ተመዝግቧል (${paymentMethod})`
+                          : `${formatCurrency(paymentOption === 'FULL' ? totalCalculated : partialAmount)} recorded (${paymentMethod})`)}
+                  </p>
+                </div>
+              </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setPaymentOption('NONE')}
-                className={`py-2 px-2 text-xs font-medium rounded-lg border text-center transition ${
-                  paymentOption === 'NONE'
-                    ? 'bg-amber-600/20 border-amber-500 text-amber-400 font-bold'
-                    : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-stone-200'
-                }`}
-              >
-                {t.noPaymentCredit}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentOption('FULL');
-                  setPartialAmount(totalCalculated);
-                }}
-                className={`py-2 px-2 text-xs font-medium rounded-lg border text-center transition ${
-                  paymentOption === 'FULL'
-                    ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 font-bold'
-                    : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-stone-200'
-                }`}
-              >
-                {t.payFull}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentOption('PARTIAL');
-                  if (partialAmount === 0) setPartialAmount(Math.round(totalCalculated / 2));
-                }}
-                className={`py-2 px-2 text-xs font-medium rounded-lg border text-center transition ${
-                  paymentOption === 'PARTIAL'
-                    ? 'bg-blue-600/20 border-blue-500 text-blue-400 font-bold'
-                    : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-stone-200'
-                }`}
-              >
-                {t.payPartial}
-              </button>
-            </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-bold text-amber-500 hover:text-amber-400">
+                  {showPaymentSection
+                    ? (language === 'am' ? 'ደብቅ' : 'Hide')
+                    : (language === 'am' ? '+ ክፍያ መዝግብ' : '+ Add Payment')}
+                </span>
+                {showPaymentSection ? (
+                  <ChevronUp className="w-4 h-4 text-stone-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-stone-400" />
+                )}
+              </div>
+            </button>
 
-            {/* If Payment option is FULL or PARTIAL */}
-            {paymentOption !== 'NONE' && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-stone-800 text-xs">
-                {paymentOption === 'PARTIAL' && (
-                  <div>
-                    <label className="block text-stone-400 mb-1">
-                      {language === 'am' ? 'የተከፈለ መጠን' : 'Amount Paid Now'}
-                    </label>
-                    <input
-                      type="number"
-                      value={partialAmount}
-                      max={totalCalculated}
-                      onChange={(e) => setPartialAmount(Number(e.target.value))}
-                      className="w-full bg-stone-800 border border-stone-700 rounded px-2.5 py-1.5 text-stone-100 font-mono"
-                    />
-                    <div className="text-[11px] text-stone-500 mt-0.5">
-                      {language === 'am' ? 'ቀሪ ዕዳ:' : 'Remaining Debt:'} {formatCurrency(Math.max(0, totalCalculated - partialAmount))}
+            {/* Collapsible Payment Body */}
+            {showPaymentSection && (
+              <div className="p-3.5 sm:p-4 border-t border-stone-800 bg-stone-900/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-300">
+                    {t.initialPaymentOption}
+                  </label>
+                  <span className="text-xs text-amber-400 font-bold font-mono">
+                    {language === 'am' ? 'ጠቅላላ ሂሳብ:' : 'Order Total:'} {formatCurrency(totalCalculated)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentOption('NONE')}
+                    className={`py-2 px-2 text-xs font-medium rounded-lg border text-center transition cursor-pointer ${
+                      paymentOption === 'NONE'
+                        ? 'bg-amber-600/20 border-amber-500 text-amber-400 font-bold'
+                        : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-stone-200'
+                    }`}
+                  >
+                    {t.noPaymentCredit}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentOption('FULL');
+                      setPartialAmount(totalCalculated);
+                    }}
+                    className={`py-2 px-2 text-xs font-medium rounded-lg border text-center transition cursor-pointer ${
+                      paymentOption === 'FULL'
+                        ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 font-bold'
+                        : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-stone-200'
+                    }`}
+                  >
+                    {t.payFull}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentOption('PARTIAL');
+                      if (partialAmount === 0) setPartialAmount(Math.round(totalCalculated / 2));
+                    }}
+                    className={`py-2 px-2 text-xs font-medium rounded-lg border text-center transition cursor-pointer ${
+                      paymentOption === 'PARTIAL'
+                        ? 'bg-blue-600/20 border-blue-500 text-blue-400 font-bold'
+                        : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-stone-200'
+                    }`}
+                  >
+                    {t.payPartial}
+                  </button>
+                </div>
+
+                {/* If Payment option is FULL or PARTIAL */}
+                {paymentOption !== 'NONE' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-stone-800 text-xs">
+                    {paymentOption === 'PARTIAL' && (
+                      <div>
+                        <label className="block text-stone-400 mb-1">
+                          {language === 'am' ? 'የተከፈለ መጠን' : 'Amount Paid Now'}
+                        </label>
+                        <input
+                          type="number"
+                          value={partialAmount}
+                          max={totalCalculated}
+                          onChange={(e) => setPartialAmount(Number(e.target.value))}
+                          className="w-full bg-stone-800 border border-stone-700 rounded px-2.5 py-1.5 text-stone-100 font-mono"
+                        />
+                        <div className="text-[11px] text-stone-500 mt-0.5">
+                          {language === 'am' ? 'ቀሪ ዕዳ:' : 'Remaining Debt:'} {formatCurrency(Math.max(0, totalCalculated - partialAmount))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-stone-400 mb-1">
+                        {language === 'am' ? 'የክፍያ ዘዴ' : 'Payment Method'}
+                      </label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                        className="w-full bg-stone-800 border border-stone-700 rounded px-2.5 py-1.5 text-stone-100"
+                      >
+                        <option value="CASH">{t.methodCash}</option>
+                        <option value="TELEBIRR">{t.methodTelebirr}</option>
+                        <option value="BANK_TRANSFER">{t.methodBankTransfer}</option>
+                        <option value="OTHER">{t.methodOther}</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-stone-400 mb-1">
+                        {t.transactionReference}
+                      </label>
+                      <input
+                        type="text"
+                        value={transactionRef}
+                        onChange={(e) => setTransactionRef(e.target.value)}
+                        placeholder={paymentMethod === 'CASH' ? 'Optional voucher #' : 'e.g. TB12908871'}
+                        className="w-full bg-stone-800 border border-stone-700 rounded px-2.5 py-1.5 text-stone-100 font-mono text-xs"
+                      />
                     </div>
                   </div>
                 )}
-
-                <div>
-                  <label className="block text-stone-400 mb-1">
-                    {language === 'am' ? 'የክፍያ ዘዴ' : 'Payment Method'}
-                  </label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="w-full bg-stone-800 border border-stone-700 rounded px-2.5 py-1.5 text-stone-100"
-                  >
-                    <option value="CASH">{t.methodCash}</option>
-                    <option value="TELEBIRR">{t.methodTelebirr}</option>
-                    <option value="BANK_TRANSFER">{t.methodBankTransfer}</option>
-                    <option value="OTHER">{t.methodOther}</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-stone-400 mb-1">
-                    {t.transactionReference}
-                  </label>
-                  <input
-                    type="text"
-                    value={transactionRef}
-                    onChange={(e) => setTransactionRef(e.target.value)}
-                    placeholder={paymentMethod === 'CASH' ? 'Optional voucher #' : 'e.g. TB12908871'}
-                    className="w-full bg-stone-800 border border-stone-700 rounded px-2.5 py-1.5 text-stone-100 font-mono text-xs"
-                  />
-                </div>
               </div>
             )}
-          </div>
-
-          {/* Notes */}
-          <div className="text-xs">
-            <label className="block text-stone-400 mb-1">
-              {language === 'am' ? 'የትዕዛዝ ተጨማሪ ማስታወሻ' : 'Order Notes'}
-            </label>
-            <input
-              type="text"
-              value={orderNotes}
-              onChange={(e) => setOrderNotes(e.target.value)}
-              placeholder="e.g. Call before dispatch, extra packaging..."
-              className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-1.5 text-stone-100 focus:outline-none"
-            />
           </div>
 
         </form>
