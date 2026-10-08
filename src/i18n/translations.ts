@@ -21,6 +21,11 @@ export const translations = {
     navComplaints: 'Complaints',
     navProductsPricing: 'Products & Pricing',
     navReports: 'Reports',
+    navGroupDailyOps: 'Daily Operations',
+    navGroupFinance: 'Customers & Accounts',
+    navGroupManagement: 'Management & Reports',
+    collapseSidebar: 'Collapse Sidebar',
+    expandSidebar: 'Expand Sidebar',
 
     // Common actions & terms
     newOrder: 'Take Phone Order',
@@ -254,6 +259,11 @@ export const translations = {
     navComplaints: 'ቅሬታዎች',
     navProductsPricing: 'ምርቶች እና ዋጋዎች',
     navReports: 'ሪፖርቶች',
+    navGroupDailyOps: 'ዕለታዊ ስራዎች',
+    navGroupFinance: 'ደንበኞች እና ሂሳብ',
+    navGroupManagement: 'አስተዳደር እና ሪፖርት',
+    collapseSidebar: 'ሳይድባር አሳንስ',
+    expandSidebar: 'ሳይድባር ዘርጋ',
 
     // Common actions & terms
     newOrder: 'የስልክ ትዕዛዝ መዝግብ',

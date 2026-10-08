@@ -8,7 +8,8 @@ import { ThemeProvider } from './theme/useTheme.tsx';
 import { LanguageProvider, useLanguage } from './i18n/useLanguage.tsx';
 import { BakeryStoreProvider } from './store/bakeryStore.tsx';
 import { Header } from './components/common/Header.tsx';
-import { Navigation, TabType } from './components/common/Navigation.tsx';
+import { TabType } from './components/common/Navigation.tsx';
+import { Sidebar } from './components/common/Sidebar.tsx';
 import { MobileBottomNav } from './components/common/MobileBottomNav.tsx';
 import { DashboardView } from './components/dashboard/DashboardView.tsx';
 import { OrdersView } from './components/orders/OrdersView.tsx';
@@ -33,6 +34,7 @@ import { ToastProvider } from './components/common/ToastContext.tsx';
 const BakeryAppContent: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Modals state
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
@@ -71,95 +73,101 @@ const BakeryAppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200">
+    <div className="min-h-screen bg-stone-950 text-stone-100 flex font-sans selection:bg-amber-500/30 selection:text-amber-200">
       
-      {/* Top Application Header */}
-      <Header
-        activeSearch={searchQuery}
-        onSearchChange={setSearchQuery}
-        onOpenQuickOrder={() => handleOpenQuickOrder()}
-      />
-
-      {/* Primary Tab Navigation */}
-      <Navigation
+      {/* Left Navigation Sidebar for Tablet Landscape & Desktop Screens */}
+      <Sidebar
         currentTab={currentTab}
         onTabChange={setCurrentTab}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
-      {/* Main Work Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 pb-28 sm:pb-8">
-        {currentTab === 'dashboard' && (
-          <DashboardView
-            onOpenQuickOrder={() => handleOpenQuickOrder()}
-            onOpenRecordPayment={(orderId, customerId) => handleOpenRecordPayment(orderId, customerId)}
-            onOpenRecordExpense={() => setRecordExpenseOpen(true)}
-            onSelectOrder={(id) => setSelectedOrderId(id)}
-            onSelectCustomer={(id) => setSelectedCustomerId(id)}
-            onNavigateTab={(tab: TabType) => setCurrentTab(tab)}
-          />
-        )}
+      {/* Main Viewport Container */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        {/* Top Application Header */}
+        <Header
+          currentTab={currentTab}
+          activeSearch={searchQuery}
+          onSearchChange={setSearchQuery}
+          onOpenQuickOrder={() => handleOpenQuickOrder()}
+        />
 
-        {currentTab === 'orders' && (
-          <OrdersView
-            onOpenQuickOrder={() => handleOpenQuickOrder()}
-            onSelectOrder={(id) => setSelectedOrderId(id)}
-            onOpenRecordPayment={(orderId, customerId) => handleOpenRecordPayment(orderId, customerId)}
-            onSelectCustomer={(id) => setSelectedCustomerId(id)}
-            initialSearchQuery={searchQuery}
-          />
-        )}
+        {/* Main Work Area */}
+        <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 pb-28 md:pb-10">
+          {currentTab === 'dashboard' && (
+            <DashboardView
+              onOpenQuickOrder={() => handleOpenQuickOrder()}
+              onOpenRecordPayment={(orderId, customerId) => handleOpenRecordPayment(orderId, customerId)}
+              onOpenRecordExpense={() => setRecordExpenseOpen(true)}
+              onSelectOrder={(id) => setSelectedOrderId(id)}
+              onSelectCustomer={(id) => setSelectedCustomerId(id)}
+              onNavigateTab={(tab: TabType) => setCurrentTab(tab)}
+            />
+          )}
 
-        {currentTab === 'customers' && (
-          <CustomersView
-            onSelectCustomer={(id) => setSelectedCustomerId(id)}
-            onOpenQuickOrder={(id) => handleOpenQuickOrder(id)}
-            onOpenAddCustomer={() => setCustomerFormOpen(true)}
-            initialSearchQuery={searchQuery}
-          />
-        )}
+          {currentTab === 'orders' && (
+            <OrdersView
+              onOpenQuickOrder={() => handleOpenQuickOrder()}
+              onSelectOrder={(id) => setSelectedOrderId(id)}
+              onOpenRecordPayment={(orderId, customerId) => handleOpenRecordPayment(orderId, customerId)}
+              onSelectCustomer={(id) => setSelectedCustomerId(id)}
+              initialSearchQuery={searchQuery}
+            />
+          )}
 
-        {currentTab === 'payments' && (
-          <PaymentsView
-            onOpenRecordPayment={() => handleOpenRecordPayment()}
-            onSelectCustomer={(id) => setSelectedCustomerId(id)}
-          />
-        )}
+          {currentTab === 'customers' && (
+            <CustomersView
+              onSelectCustomer={(id) => setSelectedCustomerId(id)}
+              onOpenQuickOrder={(id) => handleOpenQuickOrder(id)}
+              onOpenAddCustomer={() => setCustomerFormOpen(true)}
+              initialSearchQuery={searchQuery}
+            />
+          )}
 
-        {currentTab === 'debt' && (
-          <DebtLedgerView
-            onOpenRecordPayment={(orderId, customerId) => handleOpenRecordPayment(orderId, customerId)}
-            onSelectCustomer={(id) => setSelectedCustomerId(id)}
-          />
-        )}
+          {currentTab === 'payments' && (
+            <PaymentsView
+              onOpenRecordPayment={() => handleOpenRecordPayment()}
+              onSelectCustomer={(id) => setSelectedCustomerId(id)}
+            />
+          )}
 
-        {currentTab === 'collections' && (
-          <DailyCollectionsView />
-        )}
+          {currentTab === 'debt' && (
+            <DebtLedgerView
+              onOpenRecordPayment={(orderId, customerId) => handleOpenRecordPayment(orderId, customerId)}
+              onSelectCustomer={(id) => setSelectedCustomerId(id)}
+            />
+          )}
 
-        {currentTab === 'expenses' && (
-          <ExpensesView
-            onOpenRecordExpense={(period) => {
-              setRecordExpenseDefaultPeriod(period || 'DAILY');
-              setRecordExpenseOpen(true);
-            }}
-          />
-        )}
+          {currentTab === 'collections' && (
+            <DailyCollectionsView />
+          )}
 
-        {currentTab === 'complaints' && (
-          <ComplaintsView
-            onOpenNewComplaint={() => handleOpenNewComplaint()}
-            onSelectCustomer={(id) => setSelectedCustomerId(id)}
-          />
-        )}
+          {currentTab === 'expenses' && (
+            <ExpensesView
+              onOpenRecordExpense={(period) => {
+                setRecordExpenseDefaultPeriod(period || 'DAILY');
+                setRecordExpenseOpen(true);
+              }}
+            />
+          )}
 
-        {currentTab === 'products' && (
-          <ProductsPricingView />
-        )}
+          {currentTab === 'complaints' && (
+            <ComplaintsView
+              onOpenNewComplaint={() => handleOpenNewComplaint()}
+              onSelectCustomer={(id) => setSelectedCustomerId(id)}
+            />
+          )}
 
-        {currentTab === 'reports' && (
-          <FinancialReportsView />
-        )}
-      </main>
+          {currentTab === 'products' && (
+            <ProductsPricingView />
+          )}
+
+          {currentTab === 'reports' && (
+            <FinancialReportsView />
+          )}
+        </main>
+      </div>
 
       {/* Dialog Modals */}
       <QuickOrderModal

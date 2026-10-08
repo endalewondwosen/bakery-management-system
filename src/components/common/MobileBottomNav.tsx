@@ -85,7 +85,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   return (
     <>
       {/* Fixed Bottom Navigation Bar - Only on Mobile */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-stone-900/98 border-t border-stone-800 backdrop-blur-lg sm:hidden shadow-2xl safe-area-bottom">
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-stone-900/98 border-t border-stone-800 backdrop-blur-lg md:hidden shadow-2xl safe-area-bottom">
         <div className="flex items-center justify-around h-16 px-1">
           
           {/* Orders */}
@@ -186,7 +186,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
       {/* Slide-Up Mobile "More" Drawer */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-stone-950/80 backdrop-blur-sm sm:hidden animate-fade-in">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-stone-950/80 backdrop-blur-sm md:hidden animate-fade-in">
           <div
             className="fixed inset-0"
             onClick={() => setDrawerOpen(false)}
