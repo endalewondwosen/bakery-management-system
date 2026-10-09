@@ -7,9 +7,10 @@ import React from 'react';
 import { useLanguage } from '../../i18n/useLanguage.tsx';
 import { useBakeryStore } from '../../store/bakeryStore.tsx';
 import { useTheme } from '../../theme/useTheme.tsx';
-import { PhoneCall, Globe, ShieldCheck, Plus, AlertCircle, Sun, Moon, WifiOff, ChevronRight, LayoutDashboard, ShoppingBag, Users, CreditCard, BookOpenText, BadgeDollarSign, Receipt, MessageSquareWarning, Package, BarChart3 } from 'lucide-react';
+import { PhoneCall, Globe, ShieldCheck, Plus, AlertCircle, Sun, Moon, WifiOff, ChevronRight, LayoutDashboard, ShoppingBag, Users, CreditCard, BookOpenText, BadgeDollarSign, Receipt, MessageSquareWarning, Package, BarChart3, RefreshCw, Database } from 'lucide-react';
 import { UserRole } from '../../types/domain.ts';
 import { TabType } from './Navigation.tsx';
+import { OfflineQueueModal } from './OfflineQueueModal.tsx';
 
 interface HeaderProps {
   currentTab?: TabType;
@@ -25,10 +26,11 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange,
 }) => {
   const { language, toggleLanguage, t, role, setRole } = useLanguage();
-  const { pendingVerificationCount, openComplaintsCount } = useBakeryStore();
+  const { pendingVerificationCount, openComplaintsCount, isSyncing, syncWithServer, pendingMutationsCount } = useBakeryStore();
   const { theme, isDark, toggleTheme } = useTheme();
 
   const [isOnline, setIsOnline] = React.useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [isQueueModalOpen, setIsQueueModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -131,17 +133,86 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             */}
 
-            {/* Offline Status Badge */}
+            {/* Offline Status Badge with Queued Count */}
             {!isOnline && (
-              <div
-                title={language === 'am' ? 'ኢንተርኔት ተቋርጧል፡ ዳታ በስልኩ ላይ ተቀምጧል' : 'No internet: all changes safely saved on this device'}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-semibold shadow-sm animate-pulse shrink-0"
+              <button
+                onClick={() => setIsQueueModalOpen(true)}
+                title={
+                  language === 'am'
+                    ? `ኢንተርኔት ተቋርጧል፡ ${pendingMutationsCount} ለውጦች በስልኩ ተቀምጠዋል (ለመመልከት ይጫኑ)`
+                    : `No internet: ${pendingMutationsCount} changes safely queued on this device (click to view)`
+                }
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-semibold shadow-sm animate-pulse shrink-0 cursor-pointer hover:bg-amber-500/30 transition"
               >
                 <WifiOff className="w-3.5 h-3.5 text-amber-400" />
                 <span className="hidden sm:inline">
-                  {language === 'am' ? 'ከመስመር ውጭ (ተቀምጧል)' : 'Offline (Saved)'}
+                  {language === 'am'
+                    ? pendingMutationsCount > 0
+                      ? `ከመስመር ውጭ (${pendingMutationsCount} በመጠባበቅ)`
+                      : 'ከመስመር ውጭ (ተቀምጧል)'
+                    : pendingMutationsCount > 0
+                    ? `Offline (${pendingMutationsCount} queued)`
+                    : 'Offline (Saved)'}
                 </span>
-                <span className="sm:hidden text-[10px]">Offline</span>
+                <span className="sm:hidden text-[10px]">
+                  {pendingMutationsCount > 0 ? `Offline (${pendingMutationsCount})` : 'Offline'}
+                </span>
+              </button>
+            )}
+
+            {/* Online Syncing / DB Connected Indicator */}
+            {isOnline && isSyncing && (
+              <button
+                onClick={() => setIsQueueModalOpen(true)}
+                title={language === 'am' ? 'ከ SQLite ዳታቤዝ ጋር እያመሳሰለ ነው...' : 'Syncing with SQLite backend database...'}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-800 text-amber-400 border border-stone-700 text-xs font-medium shadow-xs shrink-0 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                <span className="hidden sm:inline">
+                  {language === 'am'
+                    ? pendingMutationsCount > 0
+                      ? `እያመሳሰለ ነው (${pendingMutationsCount})...`
+                      : 'እያመሳሰለ ነው...'
+                    : pendingMutationsCount > 0
+                    ? `Syncing (${pendingMutationsCount})...`
+                    : 'Syncing...'}
+                </span>
+              </button>
+            )}
+
+            {/* Manual Sync / Queue Trigger Button */}
+            {isOnline && !isSyncing && (
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => syncWithServer()}
+                  title={
+                    pendingMutationsCount > 0
+                      ? `${pendingMutationsCount} changes queued to sync`
+                      : (language === 'am' ? 'ከዳታቤዝ ጋር አመሳስል' : 'Sync with database')
+                  }
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition cursor-pointer ${
+                    pendingMutationsCount > 0
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+                      : 'bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-700'
+                  }`}
+                >
+                  <RefreshCw className="w-3 h-3 text-stone-400" />
+                  <span className="hidden sm:inline">
+                    {pendingMutationsCount > 0
+                      ? `${language === 'am' ? 'አመሳስል' : 'Sync'} (${pendingMutationsCount})`
+                      : (language === 'am' ? 'ተመሳስሏል' : 'Synced')}
+                  </span>
+                </button>
+
+                {pendingMutationsCount > 0 && (
+                  <button
+                    onClick={() => setIsQueueModalOpen(true)}
+                    title={language === 'am' ? 'ያልተላኩ ለውጦች ዝርዝር ተመልከት' : 'Inspect queued mutations'}
+                    className="p-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-400 border border-stone-700 cursor-pointer"
+                  >
+                    <Database className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             )}
 
@@ -205,6 +276,12 @@ export const Header: React.FC<HeaderProps> = ({
 
         </div>
       </div>
+
+      {/* Offline Mutation Queue Inspector Modal */}
+      <OfflineQueueModal
+        isOpen={isQueueModalOpen}
+        onClose={() => setIsQueueModalOpen(false)}
+      />
     </header>
   );
 };

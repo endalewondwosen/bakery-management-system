@@ -17,10 +17,12 @@ import {
   Truck,
   Eye,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Flame,
 } from 'lucide-react';
 import { OrderStatus } from '../../types/domain.ts';
 import { useToast } from '../common/ToastContext.tsx';
+import { ProductionSheetModal } from './ProductionSheetModal.tsx';
 
 interface OrdersViewProps {
   onOpenQuickOrder: () => void;
@@ -51,6 +53,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   const [searchTerm, setSearchTerm] = useState(initialSearchQuery);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [paymentFilter, setPaymentFilter] = useState<'ALL' | 'PAID' | 'PARTIAL' | 'UNPAID'>('ALL');
+  const [productionSheetOpen, setProductionSheetOpen] = useState(false);
 
   // Filter orders
   const filteredOrders = useMemo(() => {
@@ -113,13 +116,23 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenQuickOrder}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs sm:text-sm shadow transition shrink-0 cursor-pointer"
-        >
-          <PhoneCall className="w-4 h-4" />
-          <span>{t.newOrder}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setProductionSheetOpen(true)}
+            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-stone-850 hover:bg-stone-800 border border-stone-700/80 text-amber-400 hover:text-amber-300 font-semibold text-xs sm:text-sm shadow-sm transition shrink-0 cursor-pointer"
+          >
+            <Flame className="w-4 h-4 text-amber-400" />
+            <span>{language === 'am' ? 'የዕለት መጋገሪያ ዕቅድ' : 'Daily Production Sheet'}</span>
+          </button>
+
+          <button
+            onClick={onOpenQuickOrder}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs sm:text-sm shadow transition shrink-0 cursor-pointer"
+          >
+            <PhoneCall className="w-4 h-4" />
+            <span>{t.newOrder}</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -326,6 +339,12 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           })
         )}
       </div>
+
+      {/* Daily Production Sheet Modal */}
+      <ProductionSheetModal
+        isOpen={productionSheetOpen}
+        onClose={() => setProductionSheetOpen(false)}
+      />
 
     </div>
   );

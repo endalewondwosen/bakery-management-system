@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useLanguage } from '../../i18n/useLanguage.tsx';
 import { useBakeryStore } from '../../store/bakeryStore.tsx';
-import { X, Wallet, Building, Check, AlertCircle } from 'lucide-react';
+import { X, Wallet, Building, Check, AlertCircle, MessageSquareText, ShieldAlert, CheckCircle2, RefreshCw } from 'lucide-react';
 import { PaymentMethod } from '../../types/domain.ts';
 import { useToast } from '../common/ToastContext.tsx';
+import { paymentApi } from '../../services/apiClient.ts';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -47,6 +48,17 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   const [notes, setNotes] = useState<string>('');
   const [markVerified, setMarkVerified] = useState<boolean>(true);
 
+  // Telebirr SMS Assistant States
+  const [showSmsParser, setShowSmsParser] = useState<boolean>(false);
+  const [smsInput, setSmsInput] = useState<string>('');
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    receiptNumber: string;
+    customerName: string;
+    amount: number;
+    paymentDate: string;
+  } | null>(null);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState<boolean>(false);
+
   // Customer's open orders with debt
   const customerOrdersWithDebt = useMemo(() => {
     if (!selectedCustomerId) return [];
@@ -79,6 +91,61 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     }
   }, [selectedOrderId, selectedCustomerId]);
 
+  // Real-time duplicate check when reference changes
+  useEffect(() => {
+    const clean = transactionReference.trim();
+    if (!clean) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsCheckingDuplicate(true);
+        const res = await paymentApi.checkDuplicateReference(clean);
+        if (res.isDuplicate && res.existingPayment) {
+          setDuplicateWarning(res.existingPayment);
+        } else {
+          setDuplicateWarning(null);
+        }
+      } catch {
+        // Silent fail on network
+      } finally {
+        setIsCheckingDuplicate(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [transactionReference]);
+
+  const handleParseSms = async () => {
+    if (!smsInput.trim()) return;
+    try {
+      const parsed = await paymentApi.parseTelebirrSms(smsInput);
+      if (parsed.isValidTelebirrSms) {
+        setPaymentMethod('TELEBIRR');
+        if (parsed.amount) setAmount(parsed.amount);
+        if (parsed.transactionReference) setTransactionReference(parsed.transactionReference);
+        if (parsed.payerName || parsed.customerPhone) {
+          setNotes(`Telebirr from ${parsed.payerName || ''} (${parsed.customerPhone || ''})`);
+        }
+        showSuccess(
+          language === 'am' ? 'የቴሌብር መልእክት ተነቧል!' : 'Telebirr SMS Parsed!',
+          language === 'am'
+            ? `መጠን: ${parsed.amount || 0} ብር | ኮድ: ${parsed.transactionReference || 'N/A'}`
+            : `Extracted: ${parsed.amount || 0} ETB | Ref: ${parsed.transactionReference || 'N/A'}`
+        );
+      } else {
+        showError(
+          language === 'am' ? 'የቴሌብር መልእክት አልተገኘም' : 'Could Not Parse SMS',
+          language === 'am' ? 'እባክዎ ትክክለኛ የቴሌብር ማረጋገጫ መልእክት ያስገቡ።' : 'Please paste a valid Telebirr notification SMS text.'
+        );
+      }
+    } catch (err: any) {
+      showError('Parse Error', err?.message || 'Failed to parse SMS');
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -87,6 +154,16 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       showError(
         language === 'am' ? 'ልክ ያልሆነ መጠን' : 'Invalid Payment Amount',
         language === 'am' ? 'እባክዎ ትክክለኛ የክፍያ መጠን ያስገቡ!' : 'Please enter a valid payment amount!'
+      );
+      return;
+    }
+
+    if (duplicateWarning) {
+      showError(
+        language === 'am' ? 'የተደገመ የክፍያ ኮድ!' : 'Duplicate Transaction Reference!',
+        language === 'am'
+          ? `ይህ ኮድ አስቀድሞ በደረሰኝ ${duplicateWarning.receiptNumber} ለ${duplicateWarning.customerName} ተመዝግቧል!`
+          : `This transaction code was already recorded in Receipt #${duplicateWarning.receiptNumber} for ${duplicateWarning.customerName}!`
       );
       return;
     }
@@ -210,6 +287,47 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             />
           </div>
 
+          {/* Telebirr SMS Assistant Button & Drawer */}
+          <div className="bg-stone-850/80 p-3 rounded-xl border border-stone-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setShowSmsParser(!showSmsParser)}
+                className="flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition cursor-pointer"
+              >
+                <MessageSquareText className="w-4 h-4" />
+                <span>
+                  {language === 'am' ? 'የቴሌብር SMS በፍጥነት ለጥፍ (Auto-Extract)' : 'Fast-Paste Telebirr SMS Notification'}
+                </span>
+              </button>
+              <span className="text-[10px] text-stone-400">
+                {language === 'am' ? 'ራስ-ሰር መጠንና ኮድ አንባቢ' : 'Auto-fills Amount & Ref code'}
+              </span>
+            </div>
+
+            {showSmsParser && (
+              <div className="space-y-2 pt-1 border-t border-stone-800">
+                <textarea
+                  rows={2}
+                  value={smsInput}
+                  onChange={(e) => setSmsInput(e.target.value)}
+                  placeholder="Paste Telebirr SMS text here (e.g. You have received ETB 1,500.00 from 09... Transaction number: TB26...)"
+                  className="w-full bg-stone-900 border border-stone-700 rounded-lg p-2 text-xs text-stone-200 placeholder-stone-500 focus:outline-none focus:border-amber-500"
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleParseSms}
+                    className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{language === 'am' ? 'መረጃ አውጣና ሙላ' : 'Extract & Fill'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Payment Method */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -229,18 +347,45 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-stone-300 font-semibold mb-1">
-                {t.transactionReference}
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-stone-300 font-semibold">
+                  {t.transactionReference}
+                </label>
+                {isCheckingDuplicate && (
+                  <span className="text-[10px] text-amber-400 flex items-center gap-1">
+                    <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                    Checking...
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={transactionReference}
                 onChange={(e) => setTransactionReference(e.target.value)}
                 placeholder={paymentMethod === 'CASH' ? 'Voucher # (optional)' : 'e.g. TB991209384'}
-                className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100 font-mono"
+                className={`w-full bg-stone-800 border rounded-lg px-3 py-2 text-stone-100 font-mono ${
+                  duplicateWarning ? 'border-rose-500 bg-rose-500/10' : 'border-stone-700'
+                }`}
               />
             </div>
           </div>
+
+          {/* Duplicate Transaction Warning Banner */}
+          {duplicateWarning && (
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs flex items-start gap-2.5 animate-shake">
+              <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-bold text-rose-200">
+                  {language === 'am' ? 'ማስጠንቀቂያ፡ ይህ የክፍያ ኮድ አስቀድሞ ተመዝግቧል!' : 'Warning: Duplicate Payment Reference Code!'}
+                </p>
+                <p className="text-[11px] leading-relaxed">
+                  {language === 'am'
+                    ? `ይህ ኮድ በደረሰኝ #${duplicateWarning.receiptNumber} ለ${duplicateWarning.customerName} (${formatCurrency(duplicateWarning.amount)}) ቀን ${duplicateWarning.paymentDate.slice(0, 10)} ተመዝግቧል። እባክዎ ደግመው እንዳይመዘግቡ ያረጋግጡ!`
+                    : `Already applied in Receipt #${duplicateWarning.receiptNumber} for ${duplicateWarning.customerName} (${formatCurrency(duplicateWarning.amount)}) on ${duplicateWarning.paymentDate.slice(0, 10)}. Double submission is prevented.`}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Verification Check for Telebirr / Bank */}
           {paymentMethod !== 'CASH' && (

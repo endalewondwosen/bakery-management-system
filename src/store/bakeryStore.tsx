@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { enqueueMutation, drainMutationQueue, subscribeQueue, getPendingCount } from '../services/offlineQueue.ts';
+import { syncApi } from '../services/apiClient.ts';
 import {
   Customer,
   CustomerPricingAgreement,
@@ -145,6 +147,13 @@ interface BakeryStoreContextType {
   activeDeliveriesCount: number;
 
   resetToInitialData: () => void;
+
+  // Offline & Backend Sync Capabilities
+  isOnline: boolean;
+  isSyncing: boolean;
+  lastSyncedAt: string | null;
+  syncWithServer: () => Promise<void>;
+  pendingMutationsCount: number;
 }
 
 const BakeryStoreContext = createContext<BakeryStoreContextType | undefined>(undefined);
@@ -191,6 +200,89 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}complaints`);
     return saved ? JSON.parse(saved) : initialComplaints;
   });
+
+  // Offline & Sync States
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() => {
+    return localStorage.getItem(`${STORAGE_KEY_PREFIX}last_synced_at`);
+  });
+  const [pendingMutationsCount, setPendingMutationsCount] = useState<number>(() => getPendingCount());
+
+  // Subscribe to offline mutation queue changes
+  useEffect(() => {
+    const unsubscribe = subscribeQueue((queue) => {
+      setPendingMutationsCount(queue.length);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Background Bidirectional Offline-First Sync Function
+  const syncWithServer = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return;
+    }
+    try {
+      setIsSyncing(true);
+
+      // Step 1: Drain any queued offline mutations in FIFO order
+      await drainMutationQueue();
+
+      // Step 2: Fetch and merge full server state
+      const data = await syncApi.syncAll({
+        customers,
+        orders,
+        orderItems,
+        payments,
+        expenses,
+        complaints,
+        pricingAgreements,
+      });
+
+      if (data && data.syncedAt) {
+        setLastSyncedAt(data.syncedAt);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}last_synced_at`, data.syncedAt);
+      }
+      if (data && data.customers && Array.isArray(data.customers)) setCustomers(data.customers);
+      if (data && data.products && Array.isArray(data.products)) setProducts(data.products);
+      if (data && data.pricingAgreements && Array.isArray(data.pricingAgreements)) setPricingAgreements(data.pricingAgreements);
+      if (data && data.orders && Array.isArray(data.orders)) setOrders(data.orders);
+      if (data && data.orderItems && Array.isArray(data.orderItems)) setOrderItems(data.orderItems);
+      if (data && data.payments && Array.isArray(data.payments)) setPayments(data.payments);
+      if (data && data.expenses && Array.isArray(data.expenses)) setExpenses(data.expenses);
+      if (data && data.complaints && Array.isArray(data.complaints)) setComplaints(data.complaints);
+    } catch (err) {
+      // Graceful offline fallback: logs warning without interrupting user workflow
+      console.warn('[Offline Sync] Backend temporarily unreachable, working in local offline mode:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [customers, orders, orderItems, payments, expenses, complaints, pricingAgreements]);
+
+  // Network Connectivity Event Listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncWithServer();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Initial background synchronization attempt
+    const timer = setTimeout(() => {
+      syncWithServer();
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [syncWithServer]);
 
   // Sync to LocalStorage
   useEffect(() => {
@@ -398,6 +490,35 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setOrders(prev => [newOrder, ...prev]);
     setOrderItems(prev => [...prev, ...newItems]);
 
+    // Enqueue order mutation
+    enqueueMutation({
+      endpoint: '/api/orders',
+      method: 'POST',
+      body: {
+        customerId: customer.id,
+        customerName: customer.name,
+        organizationName: customer.organizationName,
+        branch: customer.branch,
+        customerPhone: customer.phone,
+        orderSource: 'PHONE',
+        orderDate: nowIso,
+        deliveryType: orderData.deliveryType,
+        deliveryAddress: orderData.deliveryAddress || customer.address,
+        scheduledTime: orderData.scheduledTime || customer.preferredDeliveryTime,
+        notes: orderData.notes,
+        createdBy: 'Bakery Staff',
+        items: newItems.map((it) => ({
+          productId: it.productId,
+          productNameEn: it.productNameEn,
+          productNameAm: it.productNameAm,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          subtotal: it.subtotal,
+        })),
+      },
+      description: `Order ${nextOrderNum} (${customer.organizationName})`,
+    });
+
     // If initial payment was made
     if (orderData.initialPayment && orderData.initialPayment.amount > 0) {
       const isVerified = orderData.initialPayment.isVerified ?? 
@@ -420,6 +541,28 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         notes: `Initial payment at order entry.`
       };
       setPayments(prev => [payment, ...prev]);
+
+      enqueueMutation({
+        endpoint: '/api/payments',
+        method: 'POST',
+        body: {
+          customerId: customer.id,
+          customerName: `${customer.organizationName} (${customer.name})`,
+          orderId: newOrderId,
+          amount: payment.amount,
+          paymentMethod: payment.paymentMethod,
+          transactionReference: payment.transactionReference,
+          paymentDate: nowIso,
+          recordedBy: payment.recordedBy,
+          notes: payment.notes,
+          verificationStatus: payment.verificationStatus,
+        },
+        description: `Initial payment ${payment.receiptNumber} (${payment.amount} ETB)`,
+      });
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
     }
 
     return newOrder;
@@ -459,6 +602,20 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return o;
       })
     );
+
+    enqueueMutation({
+      endpoint: `/api/orders/${orderId}/status`,
+      method: 'PATCH',
+      body: {
+        status,
+        actualDeliveryTime: actualDeliveryTime || undefined,
+      },
+      description: `Order ${orderId} -> ${status}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
   };
 
   const recordPayment = (paymentData: {
@@ -494,6 +651,29 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
 
     setPayments(prev => [newPayment, ...prev]);
+
+    enqueueMutation({
+      endpoint: '/api/payments',
+      method: 'POST',
+      body: {
+        customerId: paymentData.customerId,
+        customerName: newPayment.customerName,
+        orderId: paymentData.orderId,
+        amount: paymentData.amount,
+        paymentMethod: paymentData.paymentMethod,
+        transactionReference: paymentData.transactionReference,
+        paymentDate: nowIso,
+        recordedBy: newPayment.recordedBy,
+        notes: paymentData.notes,
+        verificationStatus: newPayment.verificationStatus,
+      },
+      description: `Payment ${newPayment.receiptNumber} (${newPayment.amount} ETB via ${newPayment.paymentMethod})`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
+
     return newPayment;
   };
 
@@ -512,6 +692,17 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return p;
       })
     );
+
+    enqueueMutation({
+      endpoint: `/api/payments/${paymentId}/verify`,
+      method: 'PATCH',
+      body: { verifiedBy },
+      description: `Verify payment ${paymentId}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
   };
 
   const rejectPayment = (paymentId: string) => {
@@ -526,6 +717,17 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return p;
       })
     );
+
+    enqueueMutation({
+      endpoint: `/api/payments/${paymentId}/reject`,
+      method: 'PATCH',
+      body: { reason: 'Payment rejected by staff audit' },
+      description: `Reject payment ${paymentId}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
   };
 
   const recordExpense = (expenseData: Omit<Expense, 'id' | 'date'> & { date?: string }): Expense => {
@@ -535,6 +737,31 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       date: expenseData.date || new Date().toISOString()
     };
     setExpenses(prev => [newExpense, ...prev]);
+
+    enqueueMutation({
+      endpoint: '/api/expenses',
+      method: 'POST',
+      body: {
+        date: newExpense.date,
+        amount: newExpense.amount,
+        category: newExpense.category,
+        description: newExpense.description,
+        paymentMethod: newExpense.paymentMethod,
+        referenceNumber: newExpense.referenceNumber,
+        recordedBy: newExpense.recordedBy || 'Staff',
+        notes: newExpense.notes,
+        expensePeriod: newExpense.expensePeriod,
+        unit: newExpense.unit,
+        quantity: newExpense.quantity,
+        unitPrice: newExpense.unitPrice,
+      },
+      description: `Expense ${newExpense.amount} ETB (${newExpense.category})`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
+
     return newExpense;
   };
 
@@ -547,6 +774,18 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       updatedAt: nowIso
     };
     setCustomers(prev => [...prev, newCustomer]);
+
+    enqueueMutation({
+      endpoint: '/api/customers',
+      method: 'POST',
+      body: customerData,
+      description: `Customer ${customerData.organizationName || customerData.name}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
+
     return newCustomer;
   };
 
@@ -563,6 +802,17 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return c;
       })
     );
+
+    enqueueMutation({
+      endpoint: `/api/customers/${id}`,
+      method: 'PUT',
+      body: customerData,
+      description: `Update customer ${id}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
   };
 
   const setCustomerPricingAgreement = (
@@ -599,6 +849,17 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return [...prev, newAgreement];
       }
     });
+
+    enqueueMutation({
+      endpoint: '/api/pricing-agreements',
+      method: 'POST',
+      body: { customerId, productId, agreedPrice, notes },
+      description: `Agreed price ${agreedPrice} ETB for customer ${customerId}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
   };
 
   const fileComplaint = (complaintData: {
@@ -632,6 +893,29 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
 
     setComplaints(prev => [newComplaint, ...prev]);
+
+    enqueueMutation({
+      endpoint: '/api/complaints',
+      method: 'POST',
+      body: {
+        customerId: complaintData.customerId,
+        customerName: newComplaint.customerName,
+        orderId: complaintData.orderId,
+        orderNumber: newComplaint.orderNumber,
+        productId: complaintData.productId,
+        productName: newComplaint.productName,
+        category: complaintData.category,
+        description: complaintData.description,
+        quantityAffected: complaintData.quantityAffected,
+        priority: complaintData.priority,
+      },
+      description: `Complaint ${newComplaint.complaintNumber} (${newComplaint.category})`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
+
     return newComplaint;
   };
 
@@ -657,6 +941,22 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return c;
       })
     );
+
+    enqueueMutation({
+      endpoint: `/api/complaints/${complaintId}/resolve`,
+      method: 'PATCH',
+      body: {
+        status: 'RESOLVED',
+        resolutionType,
+        resolutionNotes,
+        resolvedBy,
+      },
+      description: `Resolve complaint ${complaintId}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
   };
 
   const updateComplaintStatus = (complaintId: string, status: ComplaintStatus) => {
@@ -784,7 +1084,12 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         pendingVerificationCount,
         openComplaintsCount,
         activeDeliveriesCount,
-        resetToInitialData
+        resetToInitialData,
+        isOnline,
+        isSyncing,
+        lastSyncedAt,
+        syncWithServer,
+        pendingMutationsCount
       }}
     >
       {children}

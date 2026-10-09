@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { PaymentMethod, VerificationStatus } from '../../types/domain.ts';
 import { useToast } from '../common/ToastContext.tsx';
+import { TelebirrAuditModal } from './TelebirrAuditModal.tsx';
 
 interface PaymentsViewProps {
   onOpenRecordPayment: () => void;
@@ -37,6 +38,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [methodFilter, setMethodFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
 
   const pendingPayments = useMemo(() => {
     return payments.filter((p) => p.verificationStatus === 'PENDING_VERIFICATION');
@@ -85,13 +87,23 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenRecordPayment}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow transition shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t.recordPayment}</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setIsAuditModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-stone-850 hover:bg-stone-800 border border-stone-700/80 text-amber-400 hover:text-amber-300 font-semibold text-xs sm:text-sm shadow-sm transition shrink-0 cursor-pointer"
+          >
+            <ShieldAlert className="w-4 h-4 text-amber-400" />
+            <span>{language === 'am' ? 'የቴሌብር SMS ኦዲት' : 'Telebirr SMS Audit'}</span>
+          </button>
+
+          <button
+            onClick={onOpenRecordPayment}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow transition shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t.recordPayment}</span>
+          </button>
+        </div>
       </div>
 
       {/* Pending Verification Notice Card (Section 16 & 17) */}
@@ -301,6 +313,12 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
         </div>
       </div>
 
+      {/* Telebirr SMS Audit & Reconciliation Modal */}
+      <TelebirrAuditModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        onSelectCustomer={onSelectCustomer}
+      />
     </div>
   );
 };
