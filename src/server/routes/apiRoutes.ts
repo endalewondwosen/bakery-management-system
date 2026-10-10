@@ -6,7 +6,8 @@
  * Aggregates all domain module routers (Customers, Products, Orders, Payments, Expenses, Complaints, Analytics, Sync).
  */
 
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { customerRouter } from '../modules/customer/customer.routes.ts';
 import { productRouter } from '../modules/product/product.routes.ts';
 import { orderRouter } from '../modules/order/order.routes.ts';
