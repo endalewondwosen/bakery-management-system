@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { enqueueMutation, drainMutationQueue, subscribeQueue, getPendingCount } from '../services/offlineQueue.ts';
 import { syncApi } from '../services/apiClient.ts';
 import {
@@ -217,26 +217,57 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return unsubscribe;
   }, []);
 
+  // Reference to current store state so syncWithServer retains a stable callback identity
+  // without re-triggering the initial mount synchronization effect.
+  const stateRef = useRef({
+    customers,
+    orders,
+    orderItems,
+    payments,
+    expenses,
+    complaints,
+    pricingAgreements,
+  });
+
+  useEffect(() => {
+    stateRef.current = {
+      customers,
+      orders,
+      orderItems,
+      payments,
+      expenses,
+      complaints,
+      pricingAgreements,
+    };
+  }, [customers, orders, orderItems, payments, expenses, complaints, pricingAgreements]);
+
+  const isSyncingRef = useRef<boolean>(false);
+
   // Background Bidirectional Offline-First Sync Function
   const syncWithServer = useCallback(async () => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return;
     }
+    if (isSyncingRef.current) {
+      return; // Prevent duplicate concurrent sync runs
+    }
     try {
+      isSyncingRef.current = true;
       setIsSyncing(true);
 
       // Step 1: Drain any queued offline mutations in FIFO order
       await drainMutationQueue();
 
       // Step 2: Fetch and merge full server state
+      const current = stateRef.current;
       const data = await syncApi.syncAll({
-        customers,
-        orders,
-        orderItems,
-        payments,
-        expenses,
-        complaints,
-        pricingAgreements,
+        customers: current.customers,
+        orders: current.orders,
+        orderItems: current.orderItems,
+        payments: current.payments,
+        expenses: current.expenses,
+        complaints: current.complaints,
+        pricingAgreements: current.pricingAgreements,
       });
 
       if (data && data.syncedAt) {
@@ -255,11 +286,12 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       // Graceful offline fallback: logs warning without interrupting user workflow
       console.warn('[Offline Sync] Backend temporarily unreachable, working in local offline mode:', err);
     } finally {
+      isSyncingRef.current = false;
       setIsSyncing(false);
     }
-  }, [customers, orders, orderItems, payments, expenses, complaints, pricingAgreements]);
+  }, []);
 
-  // Network Connectivity Event Listeners
+  // Network Connectivity Event Listeners & Initial Mount Sync (runs once on mount)
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
