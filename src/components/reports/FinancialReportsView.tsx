@@ -15,8 +15,11 @@ import {
   Package,
   Layers,
   Download,
-  RotateCcw
+  RotateCcw,
+  FileSpreadsheet,
+  Printer
 } from 'lucide-react';
+import { CashierHandoverModal } from './CashierHandoverModal.tsx';
 
 export const FinancialReportsView: React.FC = () => {
   const { t, formatCurrency, language } = useLanguage();
@@ -117,6 +120,91 @@ export const FinancialReportsView: React.FC = () => {
       .slice(0, 5);
   }, [customers, getCustomerBalance]);
 
+  const [isCashierHandoverOpen, setIsCashierHandoverOpen] = useState(false);
+
+  // Export Daily P&L Statement to CSV
+  const handleExportPnLCSV = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const headers = ['Financial Metric / Category', 'Amount (ETB)', 'Notes / Description'];
+    const rows = [
+      ['Gross Sales Invoiced', totalSalesInvoiced, 'Total billed orders placed'],
+      ['Verified Cash & Digital Collections', totalVerifiedCollections, 'Realized liquidity in hand'],
+      ['Cash Channel Collections', paymentMethodBreakdown.cash, 'Physical cash received'],
+      ['Telebirr Channel Collections', paymentMethodBreakdown.telebirr, 'Mobile money received'],
+      ['CBE Bank Transfer Collections', paymentMethodBreakdown.bank, 'Direct bank deposits'],
+      ['Total Operating Expenses', totalExpenses, 'All operational cost categories'],
+      ['Daily Operational Expenses', expensePeriodBreakdown.daily, 'Flour, yeast, fuel, eggs'],
+      ['Monthly Overhead Expenses', expensePeriodBreakdown.monthly, 'Staff salaries, rent, utilities'],
+      ['Yearly Administrative Expenses', expensePeriodBreakdown.yearly, 'Trade license, insurance'],
+      ['Gross Operating Profit (Invoiced - Expenses)', operatingProfit, 'Accrual margin'],
+      ['Realized Net Cash Flow (Collected - Expenses)', realizedNetCash, 'Cash margin available'],
+      ['Total Accounts Receivable (Outstanding Debt)', totalOutstandingDebt, 'Uncollected customer debt'],
+    ];
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const link = document.createElement('a');
+    link.href = encodeURI(csvContent);
+    link.download = `PnL_Financial_Statement_${today}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Export Product Sales Performance to CSV
+  const handleExportProductPerformanceCSV = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const headers = ['Product ID', 'Name (English)', 'Name (Amharic)', 'Category', 'Base Price (ETB)', 'Total Units Sold', 'Total Revenue (ETB)', 'Revenue Share %'];
+    const rows = productPerformance.map(({ product, qty, revenue }) => {
+      const sharePct = totalSalesInvoiced > 0 ? Math.round((revenue / totalSalesInvoiced) * 100) : 0;
+      return [
+        product.id,
+        `"${product.nameEn}"`,
+        `"${product.nameAm}"`,
+        product.category,
+        product.basePrice,
+        qty,
+        revenue,
+        `${sharePct}%`
+      ];
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const link = document.createElement('a');
+    link.href = encodeURI(csvContent);
+    link.download = `Product_Sales_Performance_${today}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Export Outstanding Debt Aging to CSV
+  const handleExportDebtorsCSV = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const headers = ['Customer ID', 'Organization', 'Contact Person', 'Phone', 'Branch / Location', 'Total Invoiced (ETB)', 'Total Paid (ETB)', 'Outstanding Debt (ETB)', 'Status'];
+    const rows = customers.map((c) => {
+      const bal = getCustomerBalance(c.id);
+      return [
+        c.id,
+        `"${c.organizationName}"`,
+        `"${c.name}"`,
+        `"${c.phone}"`,
+        `"${c.branch || c.address}"`,
+        bal.totalInvoiced,
+        bal.totalPaid,
+        bal.outstandingBalance,
+        bal.outstandingBalance > 0 ? 'HAS_DEBT' : 'CLEARED'
+      ];
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const link = document.createElement('a');
+    link.href = encodeURI(csvContent);
+    link.download = `Accounts_Receivable_Debt_Aging_${today}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleExportJSON = () => {
     const exportData = {
       timestamp: new Date().toISOString(),
@@ -138,7 +226,7 @@ export const FinancialReportsView: React.FC = () => {
     <div className="space-y-6">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-stone-100 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-amber-500" />
@@ -151,24 +239,45 @@ export const FinancialReportsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Cashier Shift Handover Reconciliation Slip Button */}
+          <button
+            onClick={() => setIsCashierHandoverOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow transition cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>{language === 'am' ? 'የዕለት ሂሳብ ማስረከቢያ (Handover)' : 'Cashier Handover Slip'}</span>
+          </button>
+
+          {/* Export P&L CSV */}
+          <button
+            onClick={handleExportPnLCSV}
+            title="Download Profit & Loss CSV"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-850 hover:bg-stone-800 text-stone-200 border border-stone-700 text-xs font-semibold transition cursor-pointer"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{language === 'am' ? 'የትርፍና ኪሳራ (P&L)' : 'Export P&L'}</span>
+          </button>
+
+          {/* Export Full System Backup */}
           <button
             onClick={handleExportJSON}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-medium cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-850 hover:bg-stone-800 text-stone-300 border border-stone-700 text-xs font-medium cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-amber-400" />
-            <span>{language === 'am' ? 'ዳታ አስቀምጥ (Export)' : 'Export Backup'}</span>
+            <span>Backup</span>
           </button>
+
           <button
             onClick={() => {
               if (confirm(language === 'am' ? 'ሁሉንም ዳታ ወደ መጀመሪያው ሁኔታ መመለስ ይፈልጋሉ?' : 'Reset to original seed demo data?')) {
                 resetToInitialData();
               }
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-rose-950/60 text-stone-400 hover:text-rose-400 border border-stone-700 text-xs transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-850 hover:bg-rose-950/60 text-stone-400 hover:text-rose-400 border border-stone-700 text-xs transition cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>{language === 'am' ? 'ዳታ አድስ (Reset)' : 'Reset Demo'}</span>
+            <span>{language === 'am' ? 'ዳታ አድስ' : 'Reset'}</span>
           </button>
         </div>
       </div>
@@ -363,6 +472,14 @@ export const FinancialReportsView: React.FC = () => {
               <Package className="w-4 h-4 text-amber-500" />
               <span>{language === 'am' ? 'የዳቦ ሽያጭ አፈጻጸም በዓይነት' : 'Product Sales Volume & Revenue'}</span>
             </span>
+            <button
+              onClick={handleExportProductPerformanceCSV}
+              title="Download Product CSV"
+              className="flex items-center gap-1 px-2 py-1 rounded bg-stone-800 hover:bg-stone-750 text-stone-300 text-[11px] border border-stone-700 transition cursor-pointer"
+            >
+              <FileSpreadsheet className="w-3 h-3 text-emerald-400" />
+              <span>CSV</span>
+            </button>
           </div>
 
           <table className="w-full text-left text-xs text-stone-300">
@@ -482,10 +599,20 @@ export const FinancialReportsView: React.FC = () => {
 
           {/* Top 5 Debtors List */}
           <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 space-y-3 text-xs">
-            <h4 className="font-semibold text-stone-200 flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-              <span>{language === 'am' ? 'ከፍተኛ ዕዳ ያለባቸው ደንበኞች' : 'Top Debt Balances'}</span>
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-stone-200 flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <span>{language === 'am' ? 'ከፍተኛ ዕዳ ያለባቸው ደንበኞች' : 'Top Debt Balances'}</span>
+              </h4>
+              <button
+                onClick={handleExportDebtorsCSV}
+                title="Download All Debtors CSV"
+                className="flex items-center gap-1 px-2 py-0.5 rounded bg-stone-800 hover:bg-stone-750 text-stone-300 text-[10px] border border-stone-700 transition cursor-pointer"
+              >
+                <FileSpreadsheet className="w-3 h-3 text-emerald-400" />
+                <span>All CSV</span>
+              </button>
+            </div>
 
             <div className="space-y-1.5">
               {topDebtors.map(({ customer, outstandingBalance }) => (
@@ -506,6 +633,11 @@ export const FinancialReportsView: React.FC = () => {
 
       </div>
 
+      {/* Daily Cashier Handover Reconciliation Modal */}
+      <CashierHandoverModal
+        isOpen={isCashierHandoverOpen}
+        onClose={() => setIsCashierHandoverOpen(false)}
+      />
     </div>
   );
 };

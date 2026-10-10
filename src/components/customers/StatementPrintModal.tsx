@@ -203,10 +203,10 @@ export const StatementPrintModal: React.FC<StatementPrintModalProps> = ({
               <div className="flex items-start justify-between border-b-2 border-stone-800 print:border-black pb-4">
                 <div>
                   <h1 className="text-xl font-black uppercase tracking-wide text-stone-100 print:text-black">
-                    Bole Heritage Bakery & Pastry
+                    Yibeltal Bakery & Pastry (ይበልጣል ዳቦ ቤት)
                   </h1>
                   <p className="text-xs text-stone-400 print:text-stone-700">
-                    Wholesale Bakery Operations & Fresh Bread Distribution
+                    Wholesale Bakery Operations & Fresh Bread Distribution | Addis Ababa, Ethiopia
                   </p>
                   <p className="text-xs text-stone-400 print:text-stone-700">
                     Bole Sub-City, Addis Ababa, Ethiopia | Tel: +251 91 123 4567 / +251 11 654 3210
