@@ -66,3 +66,31 @@ export async function resolveComplaint(req: Request, res: Response) {
     return sendServerError(res, err);
   }
 }
+
+export async function updateComplaint(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const body = req.body;
+    const updated = await complaintService.updateComplaint(id, body);
+    if (!updated) {
+      return sendNotFound(res, `Complaint with id "${id}"`);
+    }
+    return sendSuccess(res, updated, 'Complaint updated successfully');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+
+export async function deleteComplaint(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const deleted = await complaintService.deleteComplaint(id);
+    if (!deleted) {
+      return sendNotFound(res, `Complaint with id "${id}"`);
+    }
+    return sendSuccess(res, { id, deleted: true }, 'Complaint deleted successfully');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+

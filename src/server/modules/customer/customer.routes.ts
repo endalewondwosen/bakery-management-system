@@ -22,5 +22,8 @@ customerRouter.post('/', customerController.createCustomer);
 // PUT /api/customers/:id - Update existing customer
 customerRouter.put('/:id', customerController.updateCustomer);
 
+// DELETE /api/customers/:id - Delete customer and related history
+customerRouter.delete('/:id', customerController.deleteCustomer);
+
 // GET /api/customers/:id/statement - Get customer debt ledger and transactions
 customerRouter.get('/:id/statement', customerController.getCustomerStatement);

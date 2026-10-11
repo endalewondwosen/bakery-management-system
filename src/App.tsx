@@ -15,6 +15,7 @@ import { DashboardView } from './components/dashboard/DashboardView.tsx';
 import { OrdersView } from './components/orders/OrdersView.tsx';
 import { QuickOrderModal } from './components/orders/QuickOrderModal.tsx';
 import { OrderDetailModal } from './components/orders/OrderDetailModal.tsx';
+import { EditOrderModal } from './components/orders/EditOrderModal.tsx';
 import { CustomersView } from './components/customers/CustomersView.tsx';
 import { Customer360Modal } from './components/customers/Customer360Modal.tsx';
 import { CustomerFormModal } from './components/customers/CustomerFormModal.tsx';
@@ -28,7 +29,7 @@ import { ComplaintsView } from './components/complaints/ComplaintsView.tsx';
 import { ComplaintModal } from './components/complaints/ComplaintModal.tsx';
 import { ProductsPricingView } from './components/products/ProductsPricingView.tsx';
 import { FinancialReportsView } from './components/reports/FinancialReportsView.tsx';
-import { ExpensePeriod } from './types/domain.ts';
+import { Customer, Order, ExpensePeriod } from './types/domain.ts';
 import { ToastProvider } from './components/common/ToastContext.tsx';
 
 const BakeryAppContent: React.FC = () => {
@@ -54,6 +55,9 @@ const BakeryAppContent: React.FC = () => {
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   // Helper actions
   const handleOpenQuickOrder = (customerId?: string) => {
@@ -112,6 +116,7 @@ const BakeryAppContent: React.FC = () => {
               onSelectOrder={(id) => setSelectedOrderId(id)}
               onOpenRecordPayment={(orderId, customerId) => handleOpenRecordPayment(orderId, customerId)}
               onSelectCustomer={(id) => setSelectedCustomerId(id)}
+              onEditOrder={(ord) => setEditingOrder(ord)}
               initialSearchQuery={searchQuery}
             />
           )}
@@ -120,7 +125,14 @@ const BakeryAppContent: React.FC = () => {
             <CustomersView
               onSelectCustomer={(id) => setSelectedCustomerId(id)}
               onOpenQuickOrder={(id) => handleOpenQuickOrder(id)}
-              onOpenAddCustomer={() => setCustomerFormOpen(true)}
+              onOpenAddCustomer={() => {
+                setEditingCustomer(null);
+                setCustomerFormOpen(true);
+              }}
+              onEditCustomer={(cust) => {
+                setEditingCustomer(cust);
+                setCustomerFormOpen(true);
+              }}
               initialSearchQuery={searchQuery}
             />
           )}
@@ -181,10 +193,22 @@ const BakeryAppContent: React.FC = () => {
 
       <CustomerFormModal
         isOpen={customerFormOpen}
-        onClose={() => setCustomerFormOpen(false)}
+        customerToEdit={editingCustomer}
+        onClose={() => {
+          setCustomerFormOpen(false);
+          setEditingCustomer(null);
+        }}
         onSuccess={(newCustId: string) => {
+          setEditingCustomer(null);
           setSelectedCustomerId(newCustId);
         }}
+      />
+
+      {/* Edit Order Modal */}
+      <EditOrderModal
+        isOpen={!!editingOrder}
+        onClose={() => setEditingOrder(null)}
+        order={editingOrder}
       />
 
       <RecordPaymentModal
@@ -210,6 +234,10 @@ const BakeryAppContent: React.FC = () => {
       <OrderDetailModal
         orderId={selectedOrderId}
         onClose={() => setSelectedOrderId(null)}
+        onEditOrder={(ord) => {
+          setSelectedOrderId(null);
+          setEditingOrder(ord);
+        }}
         onOpenRecordPayment={(orderId, customerId) => {
           setSelectedOrderId(null);
           handleOpenRecordPayment(orderId, customerId);
@@ -224,6 +252,11 @@ const BakeryAppContent: React.FC = () => {
       <Customer360Modal
         customerId={selectedCustomerId}
         onClose={() => setSelectedCustomerId(null)}
+        onEditCustomer={(cust) => {
+          setSelectedCustomerId(null);
+          setEditingCustomer(cust);
+          setCustomerFormOpen(true);
+        }}
         onTakeOrder={(cId) => {
           setSelectedCustomerId(null);
           handleOpenQuickOrder(cId);

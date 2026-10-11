@@ -85,6 +85,28 @@ interface BakeryStoreContextType {
 
   addCustomer: (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => Customer;
   updateCustomer: (id: string, customerData: Partial<Customer>) => void;
+  deleteCustomer: (id: string) => void;
+
+  updateOrder: (
+    orderId: string,
+    orderData: {
+      deliveryType?: DeliveryType;
+      deliveryAddress?: string;
+      scheduledTime?: string;
+      driverName?: string;
+      deliveryNotes?: string;
+      notes?: string;
+      status?: OrderStatus;
+      items?: { productId: string; quantity: number; unitPrice?: number }[];
+    }
+  ) => void;
+  deleteOrder: (orderId: string) => void;
+
+  updateExpense: (id: string, expenseData: Partial<Expense>) => void;
+  deleteExpense: (id: string) => void;
+
+  updateComplaint: (id: string, complaintData: Partial<Complaint>) => void;
+  deleteComplaint: (id: string) => void;
 
   setCustomerPricingAgreement: (
     customerId: string,
@@ -160,10 +182,75 @@ const BakeryStoreContext = createContext<BakeryStoreContextType | undefined>(und
 
 const STORAGE_KEY_PREFIX = 'bakery_v1_';
 
+function dedupeCustomers(list: Customer[]): Customer[] {
+  const seenId = new Set<string>();
+  const seenOrgPhone = new Set<string>();
+  const result: Customer[] = [];
+  for (const c of list) {
+    if (!c || !c.id) continue;
+    const orgPhoneKey = `${(c.organizationName || '').trim().toLowerCase()}_${(c.phone || '').trim()}`;
+    if (seenId.has(c.id) || (c.phone && seenOrgPhone.has(orgPhoneKey))) {
+      continue;
+    }
+    seenId.add(c.id);
+    if (c.phone) seenOrgPhone.add(orgPhoneKey);
+    result.push(c);
+  }
+  return result;
+}
+
+function dedupeOrders(list: Order[]): Order[] {
+  const seenId = new Set<string>();
+  const seenOrderNum = new Set<string>();
+  const result: Order[] = [];
+  for (const o of list) {
+    if (!o || !o.id) continue;
+    if (seenId.has(o.id) || (o.orderNumber && seenOrderNum.has(o.orderNumber.trim()))) {
+      continue;
+    }
+    seenId.add(o.id);
+    if (o.orderNumber) seenOrderNum.add(o.orderNumber.trim());
+    result.push(o);
+  }
+  return result;
+}
+
+function dedupePayments(list: Payment[]): Payment[] {
+  const seenId = new Set<string>();
+  const seenRec = new Set<string>();
+  const result: Payment[] = [];
+  for (const p of list) {
+    if (!p || !p.id) continue;
+    if (seenId.has(p.id) || (p.receiptNumber && seenRec.has(p.receiptNumber.trim()))) {
+      continue;
+    }
+    seenId.add(p.id);
+    if (p.receiptNumber) seenRec.add(p.receiptNumber.trim());
+    result.push(p);
+  }
+  return result;
+}
+
+function dedupeComplaints(list: Complaint[]): Complaint[] {
+  const seenId = new Set<string>();
+  const seenNum = new Set<string>();
+  const result: Complaint[] = [];
+  for (const c of list) {
+    if (!c || !c.id) continue;
+    if (seenId.has(c.id) || (c.complaintNumber && seenNum.has(c.complaintNumber.trim()))) {
+      continue;
+    }
+    seenId.add(c.id);
+    if (c.complaintNumber) seenNum.add(c.complaintNumber.trim());
+    result.push(c);
+  }
+  return result;
+}
+
 export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [customers, setCustomers] = useState<Customer[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}customers`);
-    return saved ? JSON.parse(saved) : initialCustomers;
+    return saved ? dedupeCustomers(JSON.parse(saved)) : initialCustomers;
   });
 
   const [pricingAgreements, setPricingAgreements] = useState<CustomerPricingAgreement[]>(() => {
@@ -178,7 +265,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}orders`);
-    return saved ? JSON.parse(saved) : initialOrders;
+    return saved ? dedupeOrders(JSON.parse(saved)) : initialOrders;
   });
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>(() => {
@@ -188,7 +275,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const [payments, setPayments] = useState<Payment[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}payments`);
-    return saved ? JSON.parse(saved) : initialPayments;
+    return saved ? dedupePayments(JSON.parse(saved)) : initialPayments;
   });
 
   const [expenses, setExpenses] = useState<Expense[]>(() => {
@@ -198,7 +285,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const [complaints, setComplaints] = useState<Complaint[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}complaints`);
-    return saved ? JSON.parse(saved) : initialComplaints;
+    return saved ? dedupeComplaints(JSON.parse(saved)) : initialComplaints;
   });
 
   // Offline & Sync States
@@ -274,14 +361,14 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setLastSyncedAt(data.syncedAt);
         localStorage.setItem(`${STORAGE_KEY_PREFIX}last_synced_at`, data.syncedAt);
       }
-      if (data && data.customers && Array.isArray(data.customers)) setCustomers(data.customers);
+      if (data && data.customers && Array.isArray(data.customers)) setCustomers(dedupeCustomers(data.customers));
       if (data && data.products && Array.isArray(data.products)) setProducts(data.products);
       if (data && data.pricingAgreements && Array.isArray(data.pricingAgreements)) setPricingAgreements(data.pricingAgreements);
-      if (data && data.orders && Array.isArray(data.orders)) setOrders(data.orders);
+      if (data && data.orders && Array.isArray(data.orders)) setOrders(dedupeOrders(data.orders));
       if (data && data.orderItems && Array.isArray(data.orderItems)) setOrderItems(data.orderItems);
-      if (data && data.payments && Array.isArray(data.payments)) setPayments(data.payments);
+      if (data && data.payments && Array.isArray(data.payments)) setPayments(dedupePayments(data.payments));
       if (data && data.expenses && Array.isArray(data.expenses)) setExpenses(data.expenses);
-      if (data && data.complaints && Array.isArray(data.complaints)) setComplaints(data.complaints);
+      if (data && data.complaints && Array.isArray(data.complaints)) setComplaints(dedupeComplaints(data.complaints));
     } catch (err) {
       // Graceful offline fallback: logs warning without interrupting user workflow
       console.warn('[Offline Sync] Backend temporarily unreachable, working in local offline mode:', err);
@@ -519,7 +606,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       updatedAt: nowIso
     };
 
-    setOrders(prev => [newOrder, ...prev]);
+    setOrders(prev => dedupeOrders([newOrder, ...prev]));
     setOrderItems(prev => [...prev, ...newItems]);
 
     // Enqueue order mutation
@@ -527,6 +614,8 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       endpoint: '/api/orders',
       method: 'POST',
       body: {
+        id: newOrderId,
+        orderNumber: nextOrderNum,
         customerId: customer.id,
         customerName: customer.name,
         organizationName: customer.organizationName,
@@ -540,6 +629,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         notes: orderData.notes,
         createdBy: 'Bakery Staff',
         items: newItems.map((it) => ({
+          id: it.id,
           productId: it.productId,
           productNameEn: it.productNameEn,
           productNameAm: it.productNameAm,
@@ -578,6 +668,8 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         endpoint: '/api/payments',
         method: 'POST',
         body: {
+          id: payment.id,
+          receiptNumber: payment.receiptNumber,
           customerId: customer.id,
           customerName: `${customer.organizationName} (${customer.name})`,
           orderId: newOrderId,
@@ -650,6 +742,100 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
+  const updateOrder = (
+    orderId: string,
+    orderData: {
+      deliveryType?: DeliveryType;
+      deliveryAddress?: string;
+      scheduledTime?: string;
+      driverName?: string;
+      deliveryNotes?: string;
+      notes?: string;
+      status?: OrderStatus;
+      items?: { productId: string; quantity: number; unitPrice?: number }[];
+    }
+  ) => {
+    const nowIso = new Date().toISOString();
+    let updatedTotal: number | undefined = undefined;
+    let newItemsList: OrderItem[] | undefined = undefined;
+
+    if (orderData.items && Array.isArray(orderData.items)) {
+      let total = 0;
+      newItemsList = orderData.items.map((it, idx) => {
+        const prod = products.find(p => p.id === it.productId);
+        const unitPrice = it.unitPrice !== undefined ? it.unitPrice : (prod?.basePrice || 0);
+        const subtotal = it.quantity * unitPrice;
+        total += subtotal;
+        return {
+          id: `item-${Date.now()}-${idx}`,
+          orderId,
+          productId: it.productId,
+          productNameEn: prod?.nameEn || 'Bread',
+          productNameAm: prod?.nameAm || 'ዳቦ',
+          quantity: it.quantity,
+          unitPrice,
+          subtotal,
+        };
+      });
+      updatedTotal = total;
+
+      setOrderItems(prev => [
+        ...prev.filter(it => it.orderId !== orderId),
+        ...newItemsList!,
+      ]);
+    }
+
+    setOrders(prev =>
+      prev.map(o => {
+        if (o.id === orderId) {
+          return {
+            ...o,
+            deliveryType: orderData.deliveryType !== undefined ? orderData.deliveryType : o.deliveryType,
+            deliveryAddress: orderData.deliveryAddress !== undefined ? orderData.deliveryAddress : o.deliveryAddress,
+            scheduledTime: orderData.scheduledTime !== undefined ? orderData.scheduledTime : o.scheduledTime,
+            driverName: orderData.driverName !== undefined ? orderData.driverName : o.driverName,
+            deliveryNotes: orderData.deliveryNotes !== undefined ? orderData.deliveryNotes : o.deliveryNotes,
+            notes: orderData.notes !== undefined ? orderData.notes : o.notes,
+            status: orderData.status !== undefined ? orderData.status : o.status,
+            totalAmount: updatedTotal !== undefined ? updatedTotal : o.totalAmount,
+            updatedAt: nowIso,
+          };
+        }
+        return o;
+      })
+    );
+
+    enqueueMutation({
+      endpoint: `/api/orders/${orderId}`,
+      method: 'PUT',
+      body: {
+        ...orderData,
+        items: newItemsList,
+      },
+      description: `Edit order ${orderId}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
+  };
+
+  const deleteOrder = (orderId: string) => {
+    setOrders(prev => prev.filter(o => o.id !== orderId));
+    setOrderItems(prev => prev.filter(it => it.orderId !== orderId));
+    setPayments(prev => prev.filter(p => p.orderId !== orderId));
+
+    enqueueMutation({
+      endpoint: `/api/orders/${orderId}`,
+      method: 'DELETE',
+      description: `Delete order ${orderId}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
+  };
+
   const recordPayment = (paymentData: {
     orderId: string;
     customerId: string;
@@ -682,12 +868,14 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       recordedBy: paymentData.recordedBy || 'Bakery Staff'
     };
 
-    setPayments(prev => [newPayment, ...prev]);
+    setPayments(prev => dedupePayments([newPayment, ...prev]));
 
     enqueueMutation({
       endpoint: '/api/payments',
       method: 'POST',
       body: {
+        id: newPayment.id,
+        receiptNumber: newPayment.receiptNumber,
         customerId: paymentData.customerId,
         customerName: newPayment.customerName,
         orderId: paymentData.orderId,
@@ -774,6 +962,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       endpoint: '/api/expenses',
       method: 'POST',
       body: {
+        id: newExpense.id,
         date: newExpense.date,
         amount: newExpense.amount,
         category: newExpense.category,
@@ -797,20 +986,65 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return newExpense;
   };
 
+  const updateExpense = (id: string, expenseData: Partial<Expense>) => {
+    setExpenses(prev =>
+      prev.map(e => (e.id === id ? { ...e, ...expenseData } : e))
+    );
+
+    enqueueMutation({
+      endpoint: `/api/expenses/${id}`,
+      method: 'PUT',
+      body: expenseData,
+      description: `Edit expense ${id}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
+  };
+
+  const deleteExpense = (id: string) => {
+    setExpenses(prev => prev.filter(e => e.id !== id));
+
+    enqueueMutation({
+      endpoint: `/api/expenses/${id}`,
+      method: 'DELETE',
+      description: `Delete expense ${id}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
+  };
+
   const addCustomer = (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Customer => {
     const nowIso = new Date().toISOString();
+    const cleanOrg = (customerData.organizationName || '').trim().toLowerCase();
+    const cleanPhone = (customerData.phone || '').trim();
+
+    // Prevent local duplicate if customer already registered
+    const existing = customers.find(
+      (c) => c.phone.trim() === cleanPhone && c.organizationName.trim().toLowerCase() === cleanOrg
+    );
+    if (existing) {
+      return existing;
+    }
+
     const newCustomer: Customer = {
       ...customerData,
       id: `cust-${Date.now()}`,
       createdAt: nowIso,
       updatedAt: nowIso
     };
-    setCustomers(prev => [...prev, newCustomer]);
+    setCustomers(prev => dedupeCustomers([...prev, newCustomer]));
 
     enqueueMutation({
       endpoint: '/api/customers',
       method: 'POST',
-      body: customerData,
+      body: {
+        ...customerData,
+        id: newCustomer.id,
+      },
       description: `Customer ${customerData.organizationName || customerData.name}`,
     });
 
@@ -847,6 +1081,22 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
+  const deleteCustomer = (id: string) => {
+    setCustomers(prev => prev.filter(c => c.id !== id));
+    setPricingAgreements(prev => prev.filter(pa => pa.customerId !== id));
+    setComplaints(prev => prev.filter(c => c.customerId !== id));
+
+    enqueueMutation({
+      endpoint: `/api/customers/${id}`,
+      method: 'DELETE',
+      description: `Delete customer ${id}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
+  };
+
   const setCustomerPricingAgreement = (
     customerId: string,
     productId: string,
@@ -854,11 +1104,13 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     notes?: string
   ) => {
     const nowIso = new Date().toISOString();
+    let agreementId = `cpa-${Date.now()}`;
     setPricingAgreements(prev => {
       const existingIndex = prev.findIndex(
         pa => pa.customerId === customerId && pa.productId === productId
       );
       if (existingIndex >= 0) {
+        agreementId = prev[existingIndex].id;
         const updated = [...prev];
         updated[existingIndex] = {
           ...updated[existingIndex],
@@ -870,7 +1122,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return updated;
       } else {
         const newAgreement: CustomerPricingAgreement = {
-          id: `cpa-${Date.now()}`,
+          id: agreementId,
           customerId,
           productId,
           agreedPrice,
@@ -885,7 +1137,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     enqueueMutation({
       endpoint: '/api/pricing-agreements',
       method: 'POST',
-      body: { customerId, productId, agreedPrice, notes },
+      body: { id: agreementId, customerId, productId, agreedPrice, notes },
       description: `Agreed price ${agreedPrice} ETB for customer ${customerId}`,
     });
 
@@ -924,12 +1176,14 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       createdAt: new Date().toISOString()
     };
 
-    setComplaints(prev => [newComplaint, ...prev]);
+    setComplaints(prev => dedupeComplaints([newComplaint, ...prev]));
 
     enqueueMutation({
       endpoint: '/api/complaints',
       method: 'POST',
       body: {
+        id: newComplaint.id,
+        complaintNumber: newComplaint.complaintNumber,
         customerId: complaintData.customerId,
         customerName: newComplaint.customerName,
         orderId: complaintData.orderId,
@@ -1000,6 +1254,37 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return c;
       })
     );
+  };
+
+  const updateComplaint = (id: string, complaintData: Partial<Complaint>) => {
+    setComplaints(prev =>
+      prev.map(c => (c.id === id ? { ...c, ...complaintData } : c))
+    );
+
+    enqueueMutation({
+      endpoint: `/api/complaints/${id}`,
+      method: 'PUT',
+      body: complaintData,
+      description: `Edit complaint ${id}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
+  };
+
+  const deleteComplaint = (id: string) => {
+    setComplaints(prev => prev.filter(c => c.id !== id));
+
+    enqueueMutation({
+      endpoint: `/api/complaints/${id}`,
+      method: 'DELETE',
+      description: `Delete complaint ${id}`,
+    });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      drainMutationQueue().catch(() => {});
+    }
   };
 
   const resetToInitialData = () => {
@@ -1098,9 +1383,16 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         recordExpense,
         addCustomer,
         updateCustomer,
+        deleteCustomer,
+        updateOrder,
+        deleteOrder,
+        updateExpense,
+        deleteExpense,
         setCustomerPricingAgreement,
         fileComplaint,
         resolveComplaint,
+        updateComplaint,
+        deleteComplaint,
         updateComplaintStatus,
         getOrderItems,
         getOrderPayments,

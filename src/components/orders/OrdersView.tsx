@@ -19,8 +19,11 @@ import {
   CheckCircle,
   AlertCircle,
   Flame,
+  Edit3,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
-import { OrderStatus } from '../../types/domain.ts';
+import { Order, OrderStatus } from '../../types/domain.ts';
 import { useToast } from '../common/ToastContext.tsx';
 import { ProductionSheetModal } from './ProductionSheetModal.tsx';
 
@@ -29,6 +32,7 @@ interface OrdersViewProps {
   onSelectOrder: (orderId: string) => void;
   onOpenRecordPayment: (orderId: string, customerId: string) => void;
   onSelectCustomer: (customerId: string) => void;
+  onEditOrder?: (order: Order) => void;
   initialSearchQuery?: string;
 }
 
@@ -37,6 +41,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   onSelectOrder,
   onOpenRecordPayment,
   onSelectCustomer,
+  onEditOrder,
   initialSearchQuery = '',
 }) => {
   const { t, formatCurrency, language } = useLanguage();
@@ -48,12 +53,14 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
     getOrderPaidAmount,
     repeatOrder,
     updateOrderStatus,
+    deleteOrder,
   } = useBakeryStore();
 
   const [searchTerm, setSearchTerm] = useState(initialSearchQuery);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [paymentFilter, setPaymentFilter] = useState<'ALL' | 'PAID' | 'PARTIAL' | 'UNPAID'>('ALL');
   const [productionSheetOpen, setProductionSheetOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
 
   // Filter orders
   const filteredOrders = useMemo(() => {
@@ -306,6 +313,26 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
 
                   {/* Quick Action buttons */}
                   <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    {onEditOrder && (
+                      <button
+                        type="button"
+                        onClick={() => onEditOrder(ord)}
+                        title={language === 'am' ? 'ትዕዛዝ አሻሽል' : 'Edit Order'}
+                        className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-amber-400 transition"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setOrderToDelete(ord)}
+                      title={language === 'am' ? 'ትዕዛዝ ሰርዝ' : 'Delete Order'}
+                      className="p-1.5 rounded-lg bg-stone-800 hover:bg-rose-950/60 text-stone-400 hover:text-rose-400 transition"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+
                     <button
                       onClick={(e) => handleQuickRepeat(e, ord.id)}
                       title={t.repeatOrder}
@@ -339,6 +366,50 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           })
         )}
       </div>
+
+      {/* Delete Order Confirmation Dialog */}
+      {orderToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-950/85 backdrop-blur-sm">
+          <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md p-5 text-xs space-y-4 shadow-2xl">
+            <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <span>{language === 'am' ? 'ትዕዛዝ ማጥፋት እርግጠኛ ነዎት?' : 'Confirm Order Deletion'}</span>
+            </div>
+
+            <p className="text-stone-300 leading-relaxed">
+              {language === 'am'
+                ? `ትዕዛዝ ቁጥር "${orderToDelete.orderNumber}" (${orderToDelete.organizationName}) ከስርዓቱ በቋሚነት ማጥፋት ይፈልጋሉ?`
+                : `Are you sure you want to permanently delete order "${orderToDelete.orderNumber}" for ${orderToDelete.organizationName}?`}
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-800">
+              <button
+                type="button"
+                onClick={() => setOrderToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-semibold"
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteOrder(orderToDelete.id);
+                  showSuccess(
+                    language === 'am' ? 'ትዕዛዝ ተሰርዟል!' : 'Order Deleted!',
+                    language === 'am'
+                      ? `ትዕዛዝ ቁጥር ${orderToDelete.orderNumber} ተሰርዟል`
+                      : `Order ${orderToDelete.orderNumber} has been deleted`
+                  );
+                  setOrderToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow"
+              >
+                {language === 'am' ? 'አዎ ሰርዝ' : 'Delete Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Daily Production Sheet Modal */}
       <ProductionSheetModal

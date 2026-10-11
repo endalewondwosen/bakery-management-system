@@ -35,11 +35,41 @@ export async function getOrder(req: Request, res: Response) {
 export async function createOrder(req: Request, res: Response) {
   try {
     const body = req.body as CreateOrderDto;
-    if (!body.customerId || !body.orderDate || !body.items || !Array.isArray(body.items) || body.items.length === 0) {
-      return sendError(res, 'Invalid order payload: customerId, orderDate, and items array are required');
+    if (!body.customerId || !body.items || !Array.isArray(body.items) || body.items.length === 0) {
+      return sendError(res, 'Invalid order payload: customerId and items array are required');
+    }
+    if (!body.orderDate) {
+      body.orderDate = new Date().toISOString();
     }
     const order = await orderService.createOrder(body);
     return sendCreated(res, order, 'Order created successfully');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+
+export async function updateOrder(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const body = req.body;
+    const updated = await orderService.updateOrder(id, body);
+    if (!updated) {
+      return sendNotFound(res, `Order with id "${id}"`);
+    }
+    return sendSuccess(res, updated, 'Order updated successfully');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+
+export async function deleteOrder(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const deleted = await orderService.deleteOrder(id);
+    if (!deleted) {
+      return sendNotFound(res, `Order with id "${id}"`);
+    }
+    return sendSuccess(res, { id, deleted: true }, 'Order deleted successfully');
   } catch (err: any) {
     return sendServerError(res, err);
   }

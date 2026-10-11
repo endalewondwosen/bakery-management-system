@@ -78,3 +78,17 @@ export async function getCustomerStatement(req: Request, res: Response) {
     return sendServerError(res, err);
   }
 }
+
+export async function deleteCustomer(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const deleted = await customerService.deleteCustomer(id);
+    if (!deleted) {
+      return sendNotFound(res, `Customer with id "${id}"`);
+    }
+    return sendSuccess(res, { id, deleted: true }, 'Customer deleted successfully');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+

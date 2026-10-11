@@ -113,7 +113,7 @@ export async function setCustomerPricingAgreement(dto: SetPricingAgreementDto): 
     };
   }
 
-  const id = `agr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const id = dto.id?.trim() || `agr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const newAgreement: CustomerPricingAgreement = {
     id,
     customerId,

@@ -14,9 +14,15 @@ import {
   Clock,
   AlertCircle,
   Building,
-  RotateCcw
+  RotateCcw,
+  Edit3,
+  Trash2,
+  AlertTriangle,
+  X,
+  Save,
 } from 'lucide-react';
-import { ComplaintStatus, ResolutionType } from '../../types/domain.ts';
+import { Complaint, ComplaintCategory, ComplaintPriority, ComplaintStatus, ResolutionType } from '../../types/domain.ts';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface ComplaintsViewProps {
   onOpenNewComplaint: () => void;
@@ -28,7 +34,8 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
   onSelectCustomer,
 }) => {
   const { t, language } = useLanguage();
-  const { complaints, resolveComplaint, updateComplaintStatus } = useBakeryStore();
+  const { showSuccess } = useToast();
+  const { complaints, resolveComplaint, updateComplaintStatus, updateComplaint, deleteComplaint } = useBakeryStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -37,6 +44,16 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolutionType, setResolutionType] = useState<ResolutionType>('REPLACEMENT');
   const [resolutionNotes, setResolutionNotes] = useState('');
+
+  // Editing complaint modal state
+  const [editingComplaint, setEditingComplaint] = useState<Complaint | null>(null);
+  const [editCategory, setEditCategory] = useState<ComplaintCategory>('QUALITY_TEXTURE');
+  const [editPriority, setEditPriority] = useState<ComplaintPriority>('HIGH');
+  const [editDescription, setEditDescription] = useState('');
+  const [editQtyAffected, setEditQtyAffected] = useState<number>(0);
+
+  // Deleting complaint state
+  const [complaintToDelete, setComplaintToDelete] = useState<Complaint | null>(null);
 
   const filteredComplaints = useMemo(() => {
     return complaints.filter((c) => {
@@ -61,6 +78,35 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
     resolveComplaint(resolvingId, resolutionType, resolutionNotes, 'Bakery Owner');
     setResolvingId(null);
     setResolutionNotes('');
+  };
+
+  const handleStartEdit = (complaint: Complaint) => {
+    setEditingComplaint(complaint);
+    setEditCategory(complaint.category);
+    setEditPriority(complaint.priority);
+    setEditDescription(complaint.description);
+    setEditQtyAffected(complaint.quantityAffected || 0);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingComplaint || !editDescription.trim()) return;
+
+    updateComplaint(editingComplaint.id, {
+      category: editCategory,
+      priority: editPriority,
+      description: editDescription.trim(),
+      quantityAffected: editQtyAffected > 0 ? editQtyAffected : undefined,
+    });
+
+    showSuccess(
+      language === 'am' ? 'ቅሬታ ተሻሽሏል!' : 'Complaint Updated!',
+      language === 'am'
+        ? `ቅሬታ ${editingComplaint.complaintNumber} መረጃ ተሻሽሏል`
+        : `Complaint ${editingComplaint.complaintNumber} has been updated`
+    );
+
+    setEditingComplaint(null);
   };
 
   return (
@@ -199,6 +245,24 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
                 </span>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleStartEdit(c)}
+                    className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-amber-400 transition"
+                    title={language === 'am' ? 'ቅሬታ አሻሽል' : 'Edit Complaint'}
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setComplaintToDelete(c)}
+                    className="p-1.5 rounded-lg bg-stone-800 hover:bg-rose-950/60 text-stone-400 hover:text-rose-400 transition"
+                    title={language === 'am' ? 'ቅሬታ ሰርዝ' : 'Delete Complaint'}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+
                   {c.status !== 'RESOLVED' && c.status !== 'CLOSED' && (
                     <button
                       onClick={() => setResolvingId(c.id)}
@@ -223,6 +287,153 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
           ))
         )}
       </div>
+
+      {/* Edit Complaint Modal */}
+      {editingComplaint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-950/85 backdrop-blur-sm">
+          <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md p-5 text-xs space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+              <h3 className="font-bold text-stone-100 text-sm flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-amber-400" />
+                <span>{language === 'am' ? 'ቅሬታ ማስተካከያ' : 'Edit Complaint'} ({editingComplaint.complaintNumber})</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingComplaint(null)}
+                className="text-stone-400 hover:text-stone-100 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-3">
+              <div>
+                <label className="block text-stone-300 font-semibold mb-1">
+                  {language === 'am' ? 'የቅሬታ ዓይነት' : 'Issue Category'}
+                </label>
+                <select
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value as ComplaintCategory)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
+                >
+                  <option value="QUALITY_TEXTURE">{t.catTexture}</option>
+                  <option value="QUALITY_BURNED">{t.catBurned}</option>
+                  <option value="QUALITY_UNDERBAKED">{t.catUnderbaked}</option>
+                  <option value="QUANTITY_SHORTAGE">{t.catShortage}</option>
+                  <option value="DELIVERY_DELAY">{t.catDelay}</option>
+                  <option value="WRONG_PRODUCT">{t.catWrongProduct}</option>
+                  <option value="PACKAGING_DAMAGE">{t.catPackagingDamage}</option>
+                  <option value="STAFF_BEHAVIOR">{t.catStaff}</option>
+                  <option value="OTHER">{t.catOther}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-stone-300 font-semibold mb-1">
+                  {language === 'am' ? 'አስፈላጊነት ደረጃ' : 'Priority'}
+                </label>
+                <select
+                  value={editPriority}
+                  onChange={(e) => setEditPriority(e.target.value as ComplaintPriority)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
+                >
+                  <option value="LOW">{t.priorityLow}</option>
+                  <option value="MEDIUM">{t.priorityMedium}</option>
+                  <option value="HIGH">{t.priorityHigh}</option>
+                  <option value="CRITICAL">{t.priorityCritical}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-stone-300 font-semibold mb-1">
+                  {language === 'am' ? 'የተጎዳ / የጎደለ ብዛት' : 'Quantity Affected'}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editQtyAffected}
+                  onChange={(e) => setEditQtyAffected(parseInt(e.target.value) || 0)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-300 font-semibold mb-1">
+                  {language === 'am' ? 'የችግሩ ዝርዝር መግለጫ' : 'Description of Issue'} *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingComplaint(null)}
+                  className="px-3.5 py-1.5 rounded-lg bg-stone-800 text-stone-300 font-semibold"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{t.save}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Complaint Confirmation Dialog */}
+      {complaintToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-950/85 backdrop-blur-sm">
+          <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md p-5 text-xs space-y-4 shadow-2xl">
+            <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <span>{language === 'am' ? 'ቅሬታ ማጥፋት እርግጠኛ ነዎት?' : 'Confirm Complaint Deletion'}</span>
+            </div>
+
+            <p className="text-stone-300 leading-relaxed">
+              {language === 'am'
+                ? `ቅሬታ ቁጥር "${complaintToDelete.complaintNumber}" (${complaintToDelete.customerName}) ከስርዓቱ በቋሚነት ማጥፋት ይፈልጋሉ?`
+                : `Are you sure you want to permanently delete complaint "${complaintToDelete.complaintNumber}" for ${complaintToDelete.customerName}?`}
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-800">
+              <button
+                type="button"
+                onClick={() => setComplaintToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-semibold"
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteComplaint(complaintToDelete.id);
+                  showSuccess(
+                    language === 'am' ? 'ቅሬታ ተሰርዟል!' : 'Complaint Deleted!',
+                    language === 'am'
+                      ? `ቅሬታ ${complaintToDelete.complaintNumber} ተሰርዟል`
+                      : `Complaint ${complaintToDelete.complaintNumber} has been deleted`
+                  );
+                  setComplaintToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow"
+              >
+                {language === 'am' ? 'አዎ ሰርዝ' : 'Delete Complaint'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Resolve Dialog Modal */}
       {resolvingId && (

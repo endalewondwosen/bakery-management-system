@@ -15,14 +15,18 @@ import {
   MapPin,
   Clock,
   ArrowRight,
-  AlertTriangle
+  AlertTriangle,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
-import { CustomerType } from '../../types/domain.ts';
+import { Customer, CustomerType } from '../../types/domain.ts';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface CustomersViewProps {
   onSelectCustomer: (customerId: string) => void;
   onOpenQuickOrder: (customerId?: string) => void;
   onOpenAddCustomer: () => void;
+  onEditCustomer?: (customer: Customer) => void;
   initialSearchQuery?: string;
 }
 
@@ -30,13 +34,16 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   onSelectCustomer,
   onOpenQuickOrder,
   onOpenAddCustomer,
+  onEditCustomer,
   initialSearchQuery = '',
 }) => {
   const { t, formatCurrency, language } = useLanguage();
-  const { customers, getCustomerBalance, products } = useBakeryStore();
+  const { showSuccess } = useToast();
+  const { customers, getCustomerBalance, deleteCustomer } = useBakeryStore();
 
   const [searchTerm, setSearchTerm] = useState(initialSearchQuery);
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
 
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
@@ -198,6 +205,26 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    {onEditCustomer && (
+                      <button
+                        type="button"
+                        onClick={() => onEditCustomer(c)}
+                        title={language === 'am' ? 'የደንበኛ መረጃ አሻሽል' : 'Edit Customer'}
+                        className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-amber-400 transition"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setCustomerToDelete(c)}
+                      title={language === 'am' ? 'ደንበኛ ሰርዝ' : 'Delete Customer'}
+                      className="p-1.5 rounded-lg bg-stone-800 hover:bg-rose-950/60 text-stone-400 hover:text-rose-400 transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+
                     <button
                       onClick={() => onOpenQuickOrder(c.id)}
                       title={t.newOrder}
@@ -206,6 +233,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                       <PhoneCall className="w-3.5 h-3.5" />
                       <span>{language === 'am' ? 'እዘዝ' : 'Order'}</span>
                     </button>
+
                     <button
                       onClick={() => onSelectCustomer(c.id)}
                       className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300"
@@ -220,6 +248,50 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           })
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {customerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-950/85 backdrop-blur-sm">
+          <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md p-5 text-xs space-y-4 shadow-2xl">
+            <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <span>{language === 'am' ? 'ደንበኛ ማጥፋት እርግጠኛ ነዎት?' : 'Confirm Customer Deletion'}</span>
+            </div>
+
+            <p className="text-stone-300 leading-relaxed">
+              {language === 'am'
+                ? `ደንበኛውን "${customerToDelete.organizationName}" (${customerToDelete.phone}) ከስርዓቱ ማጥፋት ይፈልጋሉ? ይህን እርምጃ መመለስ አይቻልም።`
+                : `Are you sure you want to delete "${customerToDelete.organizationName}" (${customerToDelete.phone})? This action cannot be undone.`}
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-800">
+              <button
+                type="button"
+                onClick={() => setCustomerToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-semibold"
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteCustomer(customerToDelete.id);
+                  showSuccess(
+                    language === 'am' ? 'ደንበኛ ተሰርዟል!' : 'Customer Deleted!',
+                    language === 'am'
+                      ? `${customerToDelete.organizationName} ተሰርዟል`
+                      : `${customerToDelete.organizationName} has been deleted`
+                  );
+                  setCustomerToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow"
+              >
+                {language === 'am' ? 'አዎ ሰርዝ' : 'Delete Customer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

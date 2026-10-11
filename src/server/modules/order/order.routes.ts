@@ -22,6 +22,12 @@ orderRouter.get('/:id', orderController.getOrder);
 // POST /api/orders
 orderRouter.post('/', orderController.createOrder);
 
+// PUT /api/orders/:id - Edit order items and details
+orderRouter.put('/:id', orderController.updateOrder);
+
+// DELETE /api/orders/:id - Delete order
+orderRouter.delete('/:id', orderController.deleteOrder);
+
 // PATCH or PUT /api/orders/:id/status
 orderRouter.patch('/:id/status', orderController.updateOrderStatus);
 orderRouter.put('/:id/status', orderController.updateOrderStatus);

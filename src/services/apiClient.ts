@@ -26,10 +26,13 @@ import type {
   SetPricingAgreementDto,
   CreateOrderDto,
   UpdateOrderStatusDto,
+  UpdateOrderDto,
   RecordPaymentDto,
   VerifyPaymentDto,
   CreateExpenseDto,
+  UpdateExpenseDto,
   CreateComplaintDto,
+  UpdateComplaintDto,
   ResolveComplaintDto,
   SyncPayloadDto,
   SyncResponseDto,
@@ -89,6 +92,10 @@ export const customerApi = {
       method: 'PUT',
       body: JSON.stringify(dto),
     }),
+  delete: (id: string) =>
+    request<{ id: string; deleted: boolean }>(`/api/customers/${id}`, {
+      method: 'DELETE',
+    }),
   getStatement: (customerId: string, startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', startDate);
@@ -132,6 +139,15 @@ export const orderApi = {
     request<Order & { items: OrderItem[] }>('/api/orders', {
       method: 'POST',
       body: JSON.stringify(dto),
+    }),
+  update: (id: string, dto: UpdateOrderDto) =>
+    request<Order & { items: OrderItem[] }>(`/api/orders/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    }),
+  delete: (id: string) =>
+    request<{ id: string; deleted: boolean }>(`/api/orders/${id}`, {
+      method: 'DELETE',
     }),
   updateStatus: (id: string, dto: UpdateOrderStatusDto) =>
     request<Order & { items: OrderItem[] }>(`/api/orders/${id}/status`, {
@@ -187,6 +203,15 @@ export const expenseApi = {
       method: 'POST',
       body: JSON.stringify(dto),
     }),
+  update: (id: string, dto: UpdateExpenseDto) =>
+    request<Expense>(`/api/expenses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    }),
+  delete: (id: string) =>
+    request<{ id: string; deleted: boolean }>(`/api/expenses/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // ============================================================================
@@ -199,6 +224,15 @@ export const complaintApi = {
     request<Complaint>('/api/complaints', {
       method: 'POST',
       body: JSON.stringify(dto),
+    }),
+  update: (id: string, dto: UpdateComplaintDto) =>
+    request<Complaint>(`/api/complaints/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    }),
+  delete: (id: string) =>
+    request<{ id: string; deleted: boolean }>(`/api/complaints/${id}`, {
+      method: 'DELETE',
     }),
   resolve: (id: string, dto: ResolveComplaintDto) =>
     request<Complaint>(`/api/complaints/${id}/resolve`, {

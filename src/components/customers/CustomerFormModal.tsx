@@ -3,27 +3,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../i18n/useLanguage.tsx';
 import { useBakeryStore } from '../../store/bakeryStore.tsx';
 import { X, Building, User, Phone, MapPin, Clock } from 'lucide-react';
-import { CustomerType } from '../../types/domain.ts';
+import { Customer, CustomerType } from '../../types/domain.ts';
 import { useToast } from '../common/ToastContext.tsx';
 
 interface CustomerFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (customerId: string) => void;
+  customerToEdit?: Customer | null;
 }
 
 export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  customerToEdit,
 }) => {
   const { t, language } = useLanguage();
   const { showSuccess, showError } = useToast();
-  const { addCustomer, products } = useBakeryStore();
+  const { addCustomer, updateCustomer, products } = useBakeryStore();
 
   const [organizationName, setOrganizationName] = useState('');
   const [name, setName] = useState('');
@@ -38,11 +40,45 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
   // Optional regular preference
   const [preferredProdId, setPreferredProdId] = useState(products[0]?.id || '');
   const [regularQty, setRegularQty] = useState<number>(100);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (customerToEdit) {
+      setOrganizationName(customerToEdit.organizationName || '');
+      setName(customerToEdit.name || '');
+      setBranch(customerToEdit.branch || '');
+      setCustomerType(customerToEdit.customerType || 'BURGER_HOUSE');
+      setPhone(customerToEdit.phone || '');
+      setManagerPhone(customerToEdit.managerPhone || '');
+      setAddress(customerToEdit.address || '');
+      setPreferredDeliveryTime(customerToEdit.preferredDeliveryTime || '07:30 AM');
+      setNotes(customerToEdit.notes || '');
+
+      if (customerToEdit.regularPreferences && customerToEdit.regularPreferences.length > 0) {
+        setPreferredProdId(customerToEdit.regularPreferences[0].productId);
+        setRegularQty(customerToEdit.regularPreferences[0].regularQuantity);
+      }
+    } else {
+      setOrganizationName('');
+      setName('');
+      setBranch('');
+      setCustomerType('BURGER_HOUSE');
+      setPhone('');
+      setManagerPhone('');
+      setAddress('');
+      setPreferredDeliveryTime('07:30 AM');
+      setNotes('');
+      setPreferredProdId(products[0]?.id || '');
+      setRegularQty(100);
+    }
+  }, [customerToEdit, isOpen, products]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!organizationName.trim()) {
       showError(
         language === 'am' ? 'የድርጅት ስም ያስፈልጋል' : 'Business Name Required',
@@ -59,33 +95,63 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
       return;
     }
 
-    const regularPreferences = preferredProdId && regularQty > 0
-      ? [{ productId: preferredProdId, regularQuantity: regularQty }]
-      : undefined;
+    setIsSubmitting(true);
+    try {
+      const regularPreferences = preferredProdId && regularQty > 0
+        ? [{ productId: preferredProdId, regularQuantity: regularQty }]
+        : undefined;
 
-    const created = addCustomer({
-      organizationName: organizationName.trim(),
-      name: (name || organizationName).trim(),
-      branch: branch.trim() || undefined,
-      customerType,
-      phone: phone.trim(),
-      managerPhone: managerPhone.trim() || undefined,
-      address: address.trim(),
-      status: 'ACTIVE',
-      preferredDeliveryTime,
-      notes: notes.trim() || undefined,
-      regularPreferences,
-    });
+      if (customerToEdit) {
+        updateCustomer(customerToEdit.id, {
+          organizationName: organizationName.trim(),
+          name: (name || organizationName).trim(),
+          branch: branch.trim() || undefined,
+          customerType,
+          phone: phone.trim(),
+          managerPhone: managerPhone.trim() || undefined,
+          address: address.trim(),
+          preferredDeliveryTime,
+          notes: notes.trim() || undefined,
+          regularPreferences,
+        });
 
-    showSuccess(
-      language === 'am' ? 'ደንበኛ ተመዝግቧል!' : 'Customer Added!',
-      language === 'am'
-        ? `${organizationName.trim()} በተሳካ ሁኔታ ተመዝግቧል`
-        : `${organizationName.trim()} has been saved successfully`
-    );
+        showSuccess(
+          language === 'am' ? 'የደንበኛ መረጃ ተሻሽሏል!' : 'Customer Updated!',
+          language === 'am'
+            ? `${organizationName.trim()} መረጃ በተሳካ ሁኔታ ተሻሽሏል`
+            : `${organizationName.trim()} updated successfully`
+        );
 
-    onClose();
-    if (onSuccess) onSuccess(created.id);
+        onClose();
+        if (onSuccess) onSuccess(customerToEdit.id);
+      } else {
+        const created = addCustomer({
+          organizationName: organizationName.trim(),
+          name: (name || organizationName).trim(),
+          branch: branch.trim() || undefined,
+          customerType,
+          phone: phone.trim(),
+          managerPhone: managerPhone.trim() || undefined,
+          address: address.trim(),
+          status: 'ACTIVE',
+          preferredDeliveryTime,
+          notes: notes.trim() || undefined,
+          regularPreferences,
+        });
+
+        showSuccess(
+          language === 'am' ? 'ደንበኛ ተመዝግቧል!' : 'Customer Added!',
+          language === 'am'
+            ? `${organizationName.trim()} በተሳካ ሁኔታ ተመዝግቧል`
+            : `${organizationName.trim()} has been saved successfully`
+        );
+
+        onClose();
+        if (onSuccess) onSuccess(created.id);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -100,10 +166,14 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-stone-100">
-                {t.addCustomer}
+                {customerToEdit
+                  ? (language === 'am' ? 'የደንበኛ መረጃ አሻሽል' : 'Edit Customer Profile')
+                  : t.addCustomer}
               </h2>
               <p className="text-stone-400 text-[11px]">
-                {language === 'am' ? 'አዲስ የቢዝነስ ወይም የግል ደንበኛ መመዝገቢያ' : 'Register business client or retail store'}
+                {customerToEdit
+                  ? (language === 'am' ? 'የስልክ፣ የአድራሻ ወይም የስም ማስተካከያ' : 'Update contact, address, branch, or preferences')
+                  : (language === 'am' ? 'አዲስ የቢዝነስ ወይም የግል ደንበኛ መመዝገቢያ' : 'Register business client or retail store')}
               </p>
             </div>
           </div>
@@ -275,9 +345,10 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold"
+              disabled={isSubmitting}
+              className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-stone-950 font-bold"
             >
-              {t.save}
+              {isSubmitting ? (language === 'am' ? 'በመመዝገብ ላይ...' : 'Saving...') : t.save}
             </button>
           </div>
         </form>

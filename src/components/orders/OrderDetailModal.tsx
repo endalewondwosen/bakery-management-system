@@ -16,9 +16,12 @@ import {
   Plus,
   Repeat,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Edit3,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
-import { OrderStatus } from '../../types/domain.ts';
+import { Order, OrderStatus } from '../../types/domain.ts';
 import { useToast } from '../common/ToastContext.tsx';
 
 interface OrderDetailModalProps {
@@ -26,6 +29,7 @@ interface OrderDetailModalProps {
   onClose: () => void;
   onOpenRecordPayment: (orderId: string, customerId: string) => void;
   onCustomerSelect: (customerId: string) => void;
+  onEditOrder?: (order: Order) => void;
 }
 
 export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
@@ -33,6 +37,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onClose,
   onOpenRecordPayment,
   onCustomerSelect,
+  onEditOrder,
 }) => {
   const { t, formatCurrency, language } = useLanguage();
   const { showSuccess } = useToast();
@@ -43,11 +48,13 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     getOrderPaidAmount,
     getOrderOutstandingAmount,
     updateOrderStatus,
+    deleteOrder,
     repeatOrder,
     verifyPayment,
   } = useBakeryStore();
 
   const [deliveryStaffInput, setDeliveryStaffInput] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!orderId) return null;
 
@@ -128,16 +135,80 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               </div>
             </div>
 
-            <div className="text-right">
+            <div className="flex items-center gap-2">
+              {onEditOrder && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onEditOrder(order);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-400 border border-stone-700 text-xs font-semibold transition cursor-pointer"
+                  title={language === 'am' ? 'ትዕዛዝ አሻሽል' : 'Edit Order'}
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>{language === 'am' ? 'አሻሽል' : 'Edit'}</span>
+                </button>
+              )}
+
               <button
+                type="button"
                 onClick={handleRepeatOrder}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-medium transition cursor-pointer"
               >
                 <Repeat className="w-3.5 h-3.5 text-amber-400" />
                 <span>{t.repeatOrder}</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 text-xs font-medium transition cursor-pointer"
+                title={language === 'am' ? 'ትዕዛዝ ሰርዝ' : 'Delete Order'}
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+              </button>
             </div>
           </div>
+
+          {/* Delete Confirmation Banner */}
+          {showDeleteConfirm && (
+            <div className="bg-rose-950/40 border border-rose-800/80 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-200">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+                <span>
+                  {language === 'am'
+                    ? `ትዕዛዝ ቁጥር ${order.orderNumber} በእርግጥ መሰረዝ ይፈልጋሉ?`
+                    : `Are you sure you want to delete order ${order.orderNumber}?`}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-3 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteOrder(order.id);
+                    showSuccess(
+                      language === 'am' ? 'ትዕዛዝ ተሰርዟል!' : 'Order Deleted!',
+                      language === 'am'
+                        ? `ትዕዛዝ ቁጥር ${order.orderNumber} ተሰርዟል`
+                        : `Order ${order.orderNumber} has been deleted`
+                    );
+                    onClose();
+                  }}
+                  className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs"
+                >
+                  {language === 'am' ? 'አዎ ሰርዝ' : 'Confirm Delete'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Delivery Card */}
           <div className="bg-stone-850/60 border border-stone-800 rounded-xl p-3.5 space-y-2">

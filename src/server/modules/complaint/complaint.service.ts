@@ -9,7 +9,7 @@ import { db } from '../../db/index.ts';
 import * as schema from '../../db/schema.ts';
 import { eq, desc } from 'drizzle-orm';
 import type { Complaint } from '../../../types/domain.ts';
-import type { CreateComplaintDto, ResolveComplaintDto } from '../../../types/apiContracts.ts';
+import type { CreateComplaintDto, ResolveComplaintDto, UpdateComplaintDto } from '../../../types/apiContracts.ts';
 
 export async function getAllComplaints(): Promise<Complaint[]> {
   const rows = await db.select().from(schema.complaints).orderBy(desc(schema.complaints.createdAt));
@@ -52,10 +52,30 @@ export async function getComplaintById(id: string): Promise<Complaint | null> {
 
 export async function createComplaint(dto: CreateComplaintDto): Promise<Complaint> {
   const now = new Date().toISOString();
-  const id = `cmp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const id = dto.id?.trim() || `cmp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const dateStr = now.slice(0, 10).replace(/-/g, '');
   const randSeq = Math.floor(100 + Math.random() * 900);
-  const complaintNumber = `CMP-${dateStr}-${randSeq}`;
+  const complaintNumber = dto.complaintNumber?.trim() || `CMP-${dateStr}-${randSeq}`;
+
+  // Idempotency: if complaint already exists by ID or complaintNumber, return existing
+  const [existingById] = await db.select().from(schema.complaints).where(eq(schema.complaints.id, id));
+  if (existingById) {
+    return {
+      ...existingById,
+      orderId: existingById.orderId ?? undefined,
+      orderNumber: existingById.orderNumber ?? undefined,
+      productId: existingById.productId ?? undefined,
+      productName: existingById.productName ?? undefined,
+      quantityAffected: existingById.quantityAffected ?? undefined,
+      resolutionType: (existingById.resolutionType as any) ?? undefined,
+      resolutionNotes: existingById.resolutionNotes ?? undefined,
+      resolvedAt: existingById.resolvedAt ?? undefined,
+      resolvedBy: existingById.resolvedBy ?? undefined,
+      category: existingById.category as any,
+      priority: existingById.priority as any,
+      status: existingById.status as any,
+    };
+  }
 
   const newComplaint: Complaint = {
     id,
@@ -109,3 +129,28 @@ export async function resolveComplaint(id: string, dto: ResolveComplaintDto): Pr
 
   return getComplaintById(id);
 }
+
+export async function updateComplaint(id: string, dto: UpdateComplaintDto): Promise<Complaint | null> {
+  const existing = await getComplaintById(id);
+  if (!existing) return null;
+
+  const updateValues: Record<string, any> = {};
+  if (dto.category !== undefined) updateValues.category = dto.category;
+  if (dto.description !== undefined) updateValues.description = dto.description;
+  if (dto.quantityAffected !== undefined) updateValues.quantityAffected = dto.quantityAffected;
+  if (dto.priority !== undefined) updateValues.priority = dto.priority;
+  if (dto.status !== undefined) updateValues.status = dto.status;
+  if (dto.resolutionType !== undefined) updateValues.resolutionType = dto.resolutionType;
+  if (dto.resolutionNotes !== undefined) updateValues.resolutionNotes = dto.resolutionNotes;
+
+  await db.update(schema.complaints).set(updateValues).where(eq(schema.complaints.id, id));
+  return getComplaintById(id);
+}
+
+export async function deleteComplaint(id: string): Promise<boolean> {
+  const existing = await getComplaintById(id);
+  if (!existing) return false;
+  await db.delete(schema.complaints).where(eq(schema.complaints.id, id));
+  return true;
+}
+

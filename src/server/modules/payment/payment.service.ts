@@ -120,15 +120,29 @@ export function parseTelebirrSms(smsText: string): ParsedTelebirrResultDto {
 
 export async function recordPayment(dto: RecordPaymentDto): Promise<Payment> {
   const now = new Date().toISOString();
-  const id = `pay-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const id = dto.id?.trim() || `pay-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const dateStr = now.slice(0, 10).replace(/-/g, '');
   const randSeq = Math.floor(1000 + Math.random() * 9000);
-  const receiptNumber = `REC-${dateStr}-${randSeq}`;
+  const receiptNumber = dto.receiptNumber?.trim() || `REC-${dateStr}-${randSeq}`;
+
+  // Idempotency: if payment already exists by ID, return existing
+  const [existingById] = await db.select().from(schema.payments).where(eq(schema.payments.id, id));
+  if (existingById) {
+    return {
+      ...existingById,
+      transactionReference: existingById.transactionReference ?? undefined,
+      verifiedBy: existingById.verifiedBy ?? undefined,
+      verifiedAt: existingById.verifiedAt ?? undefined,
+      notes: existingById.notes ?? undefined,
+      paymentMethod: existingById.paymentMethod as any,
+      verificationStatus: existingById.verificationStatus as any,
+    };
+  }
 
   // Duplicate reference validation
   if (dto.transactionReference && dto.transactionReference.trim()) {
-    const dupCheck = await checkDuplicateReference(dto.transactionReference);
-    if (dupCheck.isDuplicate && dupCheck.existingPayment) {
+    const dupCheck = await checkDuplicateReference(dto.transactionReference, id);
+    if (dupCheck.isDuplicate && dupCheck.existingPayment && dupCheck.existingPayment.id !== id) {
       throw new Error(
         `Duplicate payment reference "${dto.transactionReference}"! It was already recorded on ${dupCheck.existingPayment.paymentDate} for ${dupCheck.existingPayment.customerName} (${dupCheck.existingPayment.amount} ETB, Receipt #${dupCheck.existingPayment.receiptNumber}).`
       );

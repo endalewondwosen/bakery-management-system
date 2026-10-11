@@ -43,8 +43,43 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
 
 export async function createCustomer(dto: CreateCustomerDto): Promise<Customer> {
   const now = new Date().toISOString();
-  const id = `cust-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const id = dto.id?.trim() || `cust-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   
+  // Idempotency: if customer already exists by ID, return existing
+  const [existingById] = await db.select().from(schema.customers).where(eq(schema.customers.id, id));
+  if (existingById) {
+    return {
+      ...existingById,
+      branch: existingById.branch ?? undefined,
+      managerPhone: existingById.managerPhone ?? undefined,
+      notes: existingById.notes ?? undefined,
+      preferredDeliveryTime: existingById.preferredDeliveryTime ?? undefined,
+      customerType: existingById.customerType as any,
+      status: existingById.status as any,
+      regularPreferences: existingById.regularPreferences ? JSON.parse(existingById.regularPreferences) : undefined,
+    };
+  }
+
+  // Deduplication: if customer with the same phone and organization exists, reuse and update instead of duplicating
+  const cleanPhone = dto.phone.trim();
+  const cleanOrg = dto.organizationName.trim().toLowerCase();
+  const existingMatches = await db.select().from(schema.customers).where(eq(schema.customers.phone, cleanPhone));
+  const existingOrgMatch = existingMatches.find(
+    (c) => c.organizationName.trim().toLowerCase() === cleanOrg
+  );
+  if (existingOrgMatch) {
+    return {
+      ...existingOrgMatch,
+      branch: existingOrgMatch.branch ?? undefined,
+      managerPhone: existingOrgMatch.managerPhone ?? undefined,
+      notes: existingOrgMatch.notes ?? undefined,
+      preferredDeliveryTime: existingOrgMatch.preferredDeliveryTime ?? undefined,
+      customerType: existingOrgMatch.customerType as any,
+      status: existingOrgMatch.status as any,
+      regularPreferences: existingOrgMatch.regularPreferences ? JSON.parse(existingOrgMatch.regularPreferences) : undefined,
+    };
+  }
+
   const newCustomer: Customer = {
     ...dto,
     id,
@@ -166,3 +201,21 @@ export async function getCustomerStatement(
     statement: filteredEntries,
   };
 }
+
+export async function deleteCustomer(id: string): Promise<boolean> {
+  const existing = await getCustomerById(id);
+  if (!existing) return false;
+
+  await db.delete(schema.pricingAgreements).where(eq(schema.pricingAgreements.customerId, id));
+  await db.delete(schema.complaints).where(eq(schema.complaints.customerId, id));
+
+  const customerOrders = await db.select({ id: schema.orders.id }).from(schema.orders).where(eq(schema.orders.customerId, id));
+  for (const o of customerOrders) {
+    await db.delete(schema.orderItems).where(eq(schema.orderItems.orderId, o.id));
+  }
+  await db.delete(schema.orders).where(eq(schema.orders.customerId, id));
+  await db.delete(schema.payments).where(eq(schema.payments.customerId, id));
+  await db.delete(schema.customers).where(eq(schema.customers.id, id));
+  return true;
+}
+

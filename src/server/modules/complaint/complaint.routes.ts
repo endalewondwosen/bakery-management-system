@@ -19,6 +19,12 @@ complaintRouter.get('/:id', complaintController.getComplaint);
 // POST /api/complaints
 complaintRouter.post('/', complaintController.createComplaint);
 
+// PUT /api/complaints/:id
+complaintRouter.put('/:id', complaintController.updateComplaint);
+
+// DELETE /api/complaints/:id
+complaintRouter.delete('/:id', complaintController.deleteComplaint);
+
 // POST or PATCH /api/complaints/:id/resolve
 complaintRouter.post('/:id/resolve', complaintController.resolveComplaint);
 complaintRouter.patch('/:id/resolve', complaintController.resolveComplaint);

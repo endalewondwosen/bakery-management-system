@@ -52,6 +52,7 @@ export interface ApiErrorResponse {
 // CUSTOMER MODULE DTOs
 // ============================================================================
 export interface CreateCustomerDto {
+  id?: string;
   name: string;
   organizationName: string;
   branch?: string;
@@ -94,6 +95,7 @@ export interface CreateProductDto {
 export interface UpdateProductDto extends Partial<CreateProductDto> {}
 
 export interface SetPricingAgreementDto {
+  id?: string;
   customerId: string;
   productId: string;
   agreedPrice: number;
@@ -106,6 +108,7 @@ export interface SetPricingAgreementDto {
 // ORDER MODULE DTOs
 // ============================================================================
 export interface CreateOrderItemInput {
+  id?: string;
   productId: string;
   productNameEn: string;
   productNameAm: string;
@@ -115,6 +118,8 @@ export interface CreateOrderItemInput {
 }
 
 export interface CreateOrderDto {
+  id?: string;
+  orderNumber?: string;
   customerId: string;
   customerName: string;
   organizationName: string;
@@ -137,10 +142,23 @@ export interface UpdateOrderStatusDto {
   actualDeliveryTime?: string;
 }
 
+export interface UpdateOrderDto {
+  deliveryType?: DeliveryType;
+  deliveryAddress?: string;
+  scheduledTime?: string;
+  driverName?: string;
+  deliveryNotes?: string;
+  notes?: string;
+  status?: OrderStatus;
+  items?: CreateOrderItemInput[];
+}
+
 // ============================================================================
 // PAYMENT MODULE DTOs
 // ============================================================================
 export interface RecordPaymentDto {
+  id?: string;
+  receiptNumber?: string;
   customerId: string;
   customerName: string;
   orderId?: string;
@@ -162,6 +180,7 @@ export interface VerifyPaymentDto {
 // EXPENSE MODULE DTOs
 // ============================================================================
 export interface CreateExpenseDto {
+  id?: string;
   date: string;
   amount: number;
   category: ExpenseCategory;
@@ -176,10 +195,14 @@ export interface CreateExpenseDto {
   unitPrice?: number;
 }
 
+export interface UpdateExpenseDto extends Partial<CreateExpenseDto> {}
+
 // ============================================================================
 // COMPLAINT MODULE DTOs
 // ============================================================================
 export interface CreateComplaintDto {
+  id?: string;
+  complaintNumber?: string;
   customerId: string;
   customerName: string;
   orderId?: string;
@@ -190,6 +213,16 @@ export interface CreateComplaintDto {
   description: string;
   quantityAffected?: number;
   priority: ComplaintPriority;
+}
+
+export interface UpdateComplaintDto {
+  category?: ComplaintCategory;
+  description?: string;
+  quantityAffected?: number;
+  priority?: ComplaintPriority;
+  status?: ComplaintStatus;
+  resolutionType?: ResolutionType;
+  resolutionNotes?: string;
 }
 
 export interface ResolveComplaintDto {

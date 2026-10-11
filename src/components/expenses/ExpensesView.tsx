@@ -16,9 +16,15 @@ import {
   Sparkles,
   Wallet,
   Clock,
-  ArrowUpDown
+  ArrowUpDown,
+  Edit3,
+  Trash2,
+  AlertTriangle,
+  X,
+  Save,
 } from 'lucide-react';
-import { ExpenseCategory, ExpensePeriod } from '../../types/domain.ts';
+import { Expense, ExpenseCategory, ExpensePeriod, PaymentMethod } from '../../types/domain.ts';
+import { useToast } from '../common/ToastContext.tsx';
 
 interface ExpensesViewProps {
   onOpenRecordExpense: (defaultPeriod?: ExpensePeriod) => void;
@@ -26,11 +32,72 @@ interface ExpensesViewProps {
 
 export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense }) => {
   const { t, formatCurrency, language } = useLanguage();
-  const { expenses } = useBakeryStore();
+  const { showSuccess } = useToast();
+  const { expenses, updateExpense, deleteExpense } = useBakeryStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [periodFilter, setPeriodFilter] = useState<'ALL' | ExpensePeriod>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+
+  // Edit Expense State
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editAmount, setEditAmount] = useState<number>(0);
+  const [editCategory, setEditCategory] = useState<ExpenseCategory>('RAW_FLOUR');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editPaymentMethod, setEditPaymentMethod] = useState<PaymentMethod>('CASH');
+  const [editRef, setEditRef] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editPeriod, setEditPeriod] = useState<ExpensePeriod>('DAILY');
+  const [editUnit, setEditUnit] = useState('');
+  const [editQty, setEditQty] = useState<number>(0);
+  const [editUnitPrice, setEditUnitPrice] = useState<number>(0);
+
+  // Delete Expense State
+  const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
+
+  const handleStartEdit = (exp: Expense) => {
+    setEditingExpense(exp);
+    setEditAmount(exp.amount);
+    setEditCategory(exp.category);
+    setEditDescription(exp.description);
+    setEditDate(exp.date ? exp.date.slice(0, 10) : new Date().toISOString().slice(0, 10));
+    setEditPaymentMethod(exp.paymentMethod);
+    setEditRef(exp.referenceNumber || '');
+    setEditNotes(exp.notes || '');
+    setEditPeriod(exp.expensePeriod || 'DAILY');
+    setEditUnit(exp.unit || '');
+    setEditQty(exp.quantity || 0);
+    setEditUnitPrice(exp.unitPrice || 0);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingExpense) return;
+
+    const finalAmount = editQty > 0 && editUnitPrice > 0 ? editQty * editUnitPrice : editAmount;
+
+    updateExpense(editingExpense.id, {
+      amount: finalAmount,
+      category: editCategory,
+      description: editDescription.trim(),
+      date: editDate ? new Date(editDate).toISOString() : editingExpense.date,
+      paymentMethod: editPaymentMethod,
+      referenceNumber: editRef.trim() || undefined,
+      notes: editNotes.trim() || undefined,
+      expensePeriod: editPeriod,
+      unit: editUnit || undefined,
+      quantity: editQty > 0 ? editQty : undefined,
+      unitPrice: editUnitPrice > 0 ? editUnitPrice : undefined,
+    });
+
+    showSuccess(
+      language === 'am' ? 'ወጪ ተሻሽሏል!' : 'Expense Updated!',
+      language === 'am' ? 'የወጪ መረጃ በተሳካ ሁኔታ ተሻሽሏል' : 'Expense record has been updated successfully'
+    );
+
+    setEditingExpense(null);
+  };
 
   // Today ISO date string (YYYY-MM-DD)
   const todayStr = new Date().toISOString().split('T')[0];
@@ -353,12 +420,13 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
                 <th className="py-2.5 px-3">Payment</th>
                 <th className="py-2.5 px-3">Ref #</th>
                 <th className="py-2.5 px-3 text-right">Total Amount</th>
+                <th className="py-2.5 px-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-800">
               {filteredExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-stone-500">
+                  <td colSpan={9} className="py-8 text-center text-stone-500">
                     {language === 'am' ? 'ምንም ወጪ አልተገኘም' : 'No matching expenses logged'}
                   </td>
                 </tr>
@@ -407,6 +475,28 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
                     <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-400 text-sm whitespace-nowrap">
                       {formatCurrency(exp.amount)}
                     </td>
+
+                    {/* Actions */}
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEdit(exp)}
+                          title={language === 'am' ? 'ወጪ አሻሽል' : 'Edit Expense'}
+                          className="p-1 rounded text-stone-400 hover:text-amber-400 hover:bg-stone-800 transition"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExpenseToDelete(exp)}
+                          title={language === 'am' ? 'ወጪ ሰርዝ' : 'Delete Expense'}
+                          className="p-1 rounded text-stone-400 hover:text-rose-400 hover:bg-stone-800 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -414,6 +504,212 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
           </table>
         </div>
       </div>
+
+      {/* Edit Expense Modal */}
+      {editingExpense && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-950/85 backdrop-blur-sm">
+          <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-lg p-5 text-xs space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+              <h3 className="font-bold text-stone-100 text-sm flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-amber-400" />
+                <span>{language === 'am' ? 'ወጪ ማሻሻያ' : 'Edit Expense Record'}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingExpense(null)}
+                className="text-stone-400 hover:text-stone-100 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-stone-300 font-semibold mb-1">
+                    {language === 'am' ? 'የወጪ ምድብ' : 'Category'}
+                  </label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value as ExpenseCategory)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
+                  >
+                    <option value="RAW_FLOUR">{t.catRawFlour}</option>
+                    <option value="RAW_EGGS">{t.catRawEggs}</option>
+                    <option value="RAW_CHEESE_FETA">{t.catRawCheeseFeta}</option>
+                    <option value="RAW_SUGAR_OIL">{t.catRawSugarOil}</option>
+                    <option value="PACKAGING">{t.catPackaging}</option>
+                    <option value="TRANSPORT_FUEL">{t.catTransportFuel}</option>
+                    <option value="UTILITIES">{t.catUtilities}</option>
+                    <option value="RENT">{t.catRent}</option>
+                    <option value="SALARIES">{t.catSalaries}</option>
+                    <option value="MAINTENANCE">{t.catMaintenance}</option>
+                    <option value="OTHER">{t.catOther}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-stone-300 font-semibold mb-1">
+                    {language === 'am' ? 'የክፍያ ዘዴ' : 'Payment Method'}
+                  </label>
+                  <select
+                    value={editPaymentMethod}
+                    onChange={(e) => setEditPaymentMethod(e.target.value as PaymentMethod)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="TELEBIRR">Telebirr</option>
+                    <option value="BANK_TRANSFER">Bank Transfer (CBE)</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-stone-300 font-semibold mb-1">
+                  {language === 'am' ? 'የወጪው መግለጫ' : 'Description'} *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-stone-850/60 p-3 rounded-xl border border-stone-800">
+                <div>
+                  <label className="block text-stone-300 font-semibold mb-1">
+                    {language === 'am' ? 'ብዛት' : 'Quantity'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={editQty}
+                    onChange={(e) => setEditQty(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-1.5 text-stone-100 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-stone-300 font-semibold mb-1">
+                    {language === 'am' ? 'የአንዱ ዋጋ' : 'Unit Price'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={editUnitPrice}
+                    onChange={(e) => setEditUnitPrice(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-1.5 text-stone-100 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-stone-300 font-semibold mb-1">
+                    {language === 'am' ? 'ጠቅላላ ብር' : 'Total Amount'} *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={editQty > 0 && editUnitPrice > 0 ? editQty * editUnitPrice : editAmount}
+                    onChange={(e) => setEditAmount(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-1.5 text-rose-400 font-bold font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-stone-300 font-semibold mb-1">
+                    {language === 'am' ? 'ደረሰኝ ቁጥር' : 'Reference / Receipt #'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editRef}
+                    onChange={(e) => setEditRef(e.target.value)}
+                    placeholder="e.g. REC-10293"
+                    className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-stone-300 font-semibold mb-1">
+                    {language === 'am' ? 'ቀን' : 'Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingExpense(null)}
+                  className="px-3.5 py-1.5 rounded-lg bg-stone-800 text-stone-300 font-semibold"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{t.save}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Expense Confirmation Dialog */}
+      {expenseToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-950/85 backdrop-blur-sm">
+          <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md p-5 text-xs space-y-4 shadow-2xl">
+            <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <span>{language === 'am' ? 'ወጪ ማጥፋት እርግጠኛ ነዎት?' : 'Confirm Expense Deletion'}</span>
+            </div>
+
+            <p className="text-stone-300 leading-relaxed">
+              {language === 'am'
+                ? `ወጪውን "${expenseToDelete.description}" (${formatCurrency(expenseToDelete.amount)}) ከስርዓቱ ማጥፋት ይፈልጋሉ?`
+                : `Are you sure you want to delete expense "${expenseToDelete.description}" (${formatCurrency(expenseToDelete.amount)})?`}
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-800">
+              <button
+                type="button"
+                onClick={() => setExpenseToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-semibold"
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteExpense(expenseToDelete.id);
+                  showSuccess(
+                    language === 'am' ? 'ወጪ ተሰርዟል!' : 'Expense Deleted!',
+                    language === 'am'
+                      ? `የተመረጠው ወጪ ተሰርዟል`
+                      : `Expense record has been deleted`
+                  );
+                  setExpenseToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow"
+              >
+                {language === 'am' ? 'አዎ ሰርዝ' : 'Delete Expense'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

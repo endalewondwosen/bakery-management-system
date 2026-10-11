@@ -7,7 +7,7 @@
 
 import type { Request, Response } from 'express';
 import * as expenseService from './expense.service.ts';
-import { sendSuccess, sendCreated, sendError, sendServerError } from '../../common/responseHelper.ts';
+import { sendSuccess, sendCreated, sendNotFound, sendError, sendServerError } from '../../common/responseHelper.ts';
 import type { CreateExpenseDto } from '../../../types/apiContracts.ts';
 
 export async function getExpenses(req: Request, res: Response) {
@@ -27,6 +27,33 @@ export async function createExpense(req: Request, res: Response) {
     }
     const expense = await expenseService.createExpense(body);
     return sendCreated(res, expense, 'Expense recorded successfully');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+
+export async function updateExpense(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const body = req.body;
+    const updated = await expenseService.updateExpense(id, body);
+    if (!updated) {
+      return sendNotFound(res, `Expense with id "${id}"`);
+    }
+    return sendSuccess(res, updated, 'Expense updated successfully');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+
+export async function deleteExpense(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const deleted = await expenseService.deleteExpense(id);
+    if (!deleted) {
+      return sendNotFound(res, `Expense with id "${id}"`);
+    }
+    return sendSuccess(res, { id, deleted: true }, 'Expense deleted successfully');
   } catch (err: any) {
     return sendServerError(res, err);
   }

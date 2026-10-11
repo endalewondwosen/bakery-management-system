@@ -88,6 +88,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
 
   // Delivery options visibility - default collapsed to keep order modal quick and tidy
   const [showDeliveryDetails, setShowDeliveryDetails] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Payment Options - default collapsed / hidden to keep order form fast & tidy
   const [showPaymentSection, setShowPaymentSection] = useState<boolean>(false);
@@ -247,7 +248,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCustomerId) return;
+    if (!selectedCustomerId || isSubmitting) return;
 
     const validItems = orderItemsData
       .filter((item) => item.quantity > 0)
@@ -265,45 +266,50 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       return;
     }
 
-    let initialPaymentData = undefined;
-    if (paymentOption === 'FULL' && totalCalculated > 0) {
-      initialPaymentData = {
-        amount: totalCalculated,
-        paymentMethod,
-        transactionReference: transactionRef || undefined,
-        isVerified: paymentMethod === 'CASH',
-      };
-    } else if (paymentOption === 'PARTIAL' && partialAmount > 0) {
-      initialPaymentData = {
-        amount: partialAmount,
-        paymentMethod,
-        transactionReference: transactionRef || undefined,
-        isVerified: paymentMethod === 'CASH',
-      };
-    }
+    setIsSubmitting(true);
+    try {
+      let initialPaymentData = undefined;
+      if (paymentOption === 'FULL' && totalCalculated > 0) {
+        initialPaymentData = {
+          amount: totalCalculated,
+          paymentMethod,
+          transactionReference: transactionRef || undefined,
+          isVerified: paymentMethod === 'CASH',
+        };
+      } else if (paymentOption === 'PARTIAL' && partialAmount > 0) {
+        initialPaymentData = {
+          amount: partialAmount,
+          paymentMethod,
+          transactionReference: transactionRef || undefined,
+          isVerified: paymentMethod === 'CASH',
+        };
+      }
 
-    const created = createOrder({
-      customerId: selectedCustomerId,
-      deliveryType,
-      deliveryAddress,
-      scheduledTime,
-      deliveryNotes,
-      notes: '',
-      items: validItems,
-      initialPayment: initialPaymentData,
-    });
+      const created = createOrder({
+        customerId: selectedCustomerId,
+        deliveryType,
+        deliveryAddress,
+        scheduledTime,
+        deliveryNotes,
+        notes: '',
+        items: validItems,
+        initialPayment: initialPaymentData,
+      });
 
-    const targetCustomer = customers.find((c) => c.id === selectedCustomerId);
-    showSuccess(
-      language === 'am' ? 'ትዕዛዝ ተመዝግቧል!' : 'Order Created!',
-      language === 'am'
-        ? `ትዕዛዝ ${created.orderNumber} ለ${targetCustomer?.organizationName || 'ደንበኛ'} ተመዝግቧል (${formatCurrency(created.totalAmount)})`
-        : `Order ${created.orderNumber} for ${targetCustomer?.organizationName || 'Customer'} saved (${formatCurrency(created.totalAmount)})`
-    );
+      const targetCustomer = customers.find((c) => c.id === selectedCustomerId);
+      showSuccess(
+        language === 'am' ? 'ትዕዛዝ ተመዝግቧል!' : 'Order Created!',
+        language === 'am'
+          ? `ትዕዛዝ ${created.orderNumber} ለ${targetCustomer?.organizationName || 'ደንበኛ'} ተመዝግቧል (${formatCurrency(created.totalAmount)})`
+          : `Order ${created.orderNumber} for ${targetCustomer?.organizationName || 'Customer'} saved (${formatCurrency(created.totalAmount)})`
+      );
 
-    onClose();
-    if (onSuccessOrder) {
-      onSuccessOrder(created.id);
+      onClose();
+      if (onSuccessOrder) {
+        onSuccessOrder(created.id);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -894,10 +900,12 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={totalCalculated === 0}
+              disabled={totalCalculated === 0 || isSubmitting}
               className="min-h-[44px] px-5 sm:px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-stone-950 text-sm sm:text-base font-extrabold transition shadow-lg shadow-amber-500/20 cursor-pointer"
             >
-              {language === 'am' ? 'ትዕዛዝ መዝግብ' : 'Confirm Order'}
+              {isSubmitting
+                ? (language === 'am' ? 'በመመዝገብ ላይ...' : 'Saving Order...')
+                : (language === 'am' ? 'ትዕዛዝ መዝግብ' : 'Confirm Order')}
             </button>
           </div>
         </div>

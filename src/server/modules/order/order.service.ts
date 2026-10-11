@@ -13,6 +13,7 @@ import type { Order, OrderItem } from '../../../types/domain.ts';
 import type {
   CreateOrderDto,
   UpdateOrderStatusDto,
+  UpdateOrderDto,
   DailyProductionSheetDto,
   ProductionProductSummary,
   ProductionBatchSlot,
@@ -71,8 +72,47 @@ export async function createOrder(dto: CreateOrderDto): Promise<Order & { items:
   const now = new Date().toISOString();
   const dateStr = now.slice(0, 10).replace(/-/g, '');
   const randSeq = Math.floor(1000 + Math.random() * 9000);
-  const orderNumber = `ORD-${dateStr}-${randSeq}`;
-  const orderId = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const orderNumber = dto.orderNumber?.trim() || `ORD-${dateStr}-${randSeq}`;
+  const orderId = dto.id?.trim() || `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+  // Idempotency: if order already exists by ID or orderNumber, return existing
+  const [existingById] = await db.select().from(schema.orders).where(eq(schema.orders.id, orderId));
+  if (existingById) {
+    const existingItems = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, orderId));
+    return {
+      ...existingById,
+      branch: existingById.branch ?? undefined,
+      deliveryAddress: existingById.deliveryAddress ?? undefined,
+      scheduledTime: existingById.scheduledTime ?? undefined,
+      actualDeliveryTime: existingById.actualDeliveryTime ?? undefined,
+      driverName: existingById.driverName ?? undefined,
+      deliveryNotes: existingById.deliveryNotes ?? undefined,
+      notes: existingById.notes ?? undefined,
+      orderSource: existingById.orderSource as any,
+      status: existingById.status as any,
+      deliveryType: existingById.deliveryType as any,
+      items: existingItems,
+    };
+  }
+
+  const [existingByNum] = await db.select().from(schema.orders).where(eq(schema.orders.orderNumber, orderNumber));
+  if (existingByNum) {
+    const existingItems = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, existingByNum.id));
+    return {
+      ...existingByNum,
+      branch: existingByNum.branch ?? undefined,
+      deliveryAddress: existingByNum.deliveryAddress ?? undefined,
+      scheduledTime: existingByNum.scheduledTime ?? undefined,
+      actualDeliveryTime: existingByNum.actualDeliveryTime ?? undefined,
+      driverName: existingByNum.driverName ?? undefined,
+      deliveryNotes: existingByNum.deliveryNotes ?? undefined,
+      notes: existingByNum.notes ?? undefined,
+      orderSource: existingByNum.orderSource as any,
+      status: existingByNum.status as any,
+      deliveryType: existingByNum.deliveryType as any,
+      items: existingItems,
+    };
+  }
 
   const totalAmount = dto.items.reduce((sum, item) => sum + (item.subtotal || item.quantity * item.unitPrice), 0);
 
@@ -118,7 +158,7 @@ export async function createOrder(dto: CreateOrderDto): Promise<Order & { items:
 
   const createdItems: OrderItem[] = [];
   for (const item of dto.items) {
-    const itemId = `oi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const itemId = item.id?.trim() || `oi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const orderItem: OrderItem = {
       id: itemId,
       orderId: newOrder.id,
@@ -130,16 +170,19 @@ export async function createOrder(dto: CreateOrderDto): Promise<Order & { items:
       subtotal: item.subtotal || item.quantity * item.unitPrice,
     };
 
-    await db.insert(schema.orderItems).values({
-      id: orderItem.id,
-      orderId: orderItem.orderId,
-      productId: orderItem.productId,
-      productNameEn: orderItem.productNameEn,
-      productNameAm: orderItem.productNameAm,
-      quantity: orderItem.quantity,
-      unitPrice: orderItem.unitPrice,
-      subtotal: orderItem.subtotal,
-    });
+    const [existingItem] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.id, itemId));
+    if (!existingItem) {
+      await db.insert(schema.orderItems).values({
+        id: orderItem.id,
+        orderId: orderItem.orderId,
+        productId: orderItem.productId,
+        productNameEn: orderItem.productNameEn,
+        productNameAm: orderItem.productNameAm,
+        quantity: orderItem.quantity,
+        unitPrice: orderItem.unitPrice,
+        subtotal: orderItem.subtotal,
+      });
+    }
 
     createdItems.push(orderItem);
   }
@@ -164,6 +207,56 @@ export async function updateOrderStatus(id: string, dto: UpdateOrderStatusDto): 
   await db.update(schema.orders).set(updateValues).where(eq(schema.orders.id, id));
 
   return getOrderById(id);
+}
+
+export async function updateOrder(id: string, dto: UpdateOrderDto): Promise<(Order & { items: OrderItem[] }) | null> {
+  const existing = await getOrderById(id);
+  if (!existing) return null;
+
+  const now = new Date().toISOString();
+  const updateValues: Record<string, any> = { updatedAt: now };
+
+  if (dto.status !== undefined) updateValues.status = dto.status;
+  if (dto.deliveryType !== undefined) updateValues.deliveryType = dto.deliveryType;
+  if (dto.deliveryAddress !== undefined) updateValues.deliveryAddress = dto.deliveryAddress;
+  if (dto.scheduledTime !== undefined) updateValues.scheduledTime = dto.scheduledTime;
+  if (dto.driverName !== undefined) updateValues.driverName = dto.driverName;
+  if (dto.deliveryNotes !== undefined) updateValues.deliveryNotes = dto.deliveryNotes;
+  if (dto.notes !== undefined) updateValues.notes = dto.notes;
+
+  if (dto.items && Array.isArray(dto.items)) {
+    await db.delete(schema.orderItems).where(eq(schema.orderItems.orderId, id));
+    let calculatedTotal = 0;
+    for (const item of dto.items) {
+      const itemId = item.id?.trim() || `oi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      const subtotal = item.subtotal || item.quantity * item.unitPrice;
+      calculatedTotal += subtotal;
+      await db.insert(schema.orderItems).values({
+        id: itemId,
+        orderId: id,
+        productId: item.productId,
+        productNameEn: item.productNameEn,
+        productNameAm: item.productNameAm,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        subtotal,
+      });
+    }
+    updateValues.totalAmount = calculatedTotal;
+  }
+
+  await db.update(schema.orders).set(updateValues).where(eq(schema.orders.id, id));
+  return getOrderById(id);
+}
+
+export async function deleteOrder(id: string): Promise<boolean> {
+  const existing = await getOrderById(id);
+  if (!existing) return false;
+
+  await db.delete(schema.orderItems).where(eq(schema.orderItems.orderId, id));
+  await db.delete(schema.payments).where(eq(schema.payments.orderId, id));
+  await db.delete(schema.orders).where(eq(schema.orders.id, id));
+  return true;
 }
 
 /**

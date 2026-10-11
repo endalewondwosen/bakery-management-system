@@ -23,7 +23,13 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 1. Process incoming customer updates / creations
   if (payload.customers && Array.isArray(payload.customers)) {
     for (const c of payload.customers) {
-      const [existing] = await db.select().from(schema.customers).where(eq(schema.customers.id, c.id));
+      let [existing] = await db.select().from(schema.customers).where(eq(schema.customers.id, c.id));
+      if (!existing && c.phone) {
+        const matches = await db.select().from(schema.customers).where(eq(schema.customers.phone, c.phone.trim()));
+        const cleanOrg = (c.organizationName || '').trim().toLowerCase();
+        existing = matches.find((m) => m.organizationName.trim().toLowerCase() === cleanOrg) as typeof existing;
+      }
+
       if (!existing) {
         await db.insert(schema.customers).values({
           id: c.id,
@@ -58,7 +64,7 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
             regularPreferences: c.regularPreferences ? JSON.stringify(c.regularPreferences) : null,
             updatedAt: c.updatedAt,
           })
-          .where(eq(schema.customers.id, c.id));
+          .where(eq(schema.customers.id, existing.id));
       }
     }
   }
@@ -66,7 +72,12 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 2. Process incoming pricing agreements
   if (payload.pricingAgreements && Array.isArray(payload.pricingAgreements)) {
     for (const a of payload.pricingAgreements) {
-      const [existing] = await db.select().from(schema.pricingAgreements).where(eq(schema.pricingAgreements.id, a.id));
+      let [existing] = await db.select().from(schema.pricingAgreements).where(eq(schema.pricingAgreements.id, a.id));
+      if (!existing) {
+        const matches = await db.select().from(schema.pricingAgreements).where(eq(schema.pricingAgreements.customerId, a.customerId));
+        existing = matches.find((m) => m.productId === a.productId) as typeof existing;
+      }
+
       if (!existing) {
         await db.insert(schema.pricingAgreements).values({
           id: a.id,
@@ -77,6 +88,15 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
           isActive: a.isActive,
           notes: a.notes || null,
         });
+      } else {
+        await db
+          .update(schema.pricingAgreements)
+          .set({
+            agreedPrice: a.agreedPrice,
+            isActive: a.isActive,
+            notes: a.notes || null,
+          })
+          .where(eq(schema.pricingAgreements.id, existing.id));
       }
     }
   }
@@ -84,7 +104,12 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 3. Process incoming orders
   if (payload.orders && Array.isArray(payload.orders)) {
     for (const o of payload.orders) {
-      const [existing] = await db.select().from(schema.orders).where(eq(schema.orders.id, o.id));
+      let [existing] = await db.select().from(schema.orders).where(eq(schema.orders.id, o.id));
+      if (!existing && o.orderNumber) {
+        const [byNum] = await db.select().from(schema.orders).where(eq(schema.orders.orderNumber, o.orderNumber.trim()));
+        existing = byNum as typeof existing;
+      }
+
       if (!existing) {
         await db.insert(schema.orders).values({
           id: o.id,
@@ -121,7 +146,7 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
             notes: o.notes || null,
             updatedAt: o.updatedAt,
           })
-          .where(eq(schema.orders.id, o.id));
+          .where(eq(schema.orders.id, existing.id));
       }
     }
   }
@@ -129,7 +154,12 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 4. Process incoming order items
   if (payload.orderItems && Array.isArray(payload.orderItems)) {
     for (const item of payload.orderItems) {
-      const [existing] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.id, item.id));
+      let [existing] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.id, item.id));
+      if (!existing) {
+        const matches = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, item.orderId));
+        existing = matches.find((m) => m.productId === item.productId) as typeof existing;
+      }
+
       if (!existing) {
         await db.insert(schema.orderItems).values({
           id: item.id,
@@ -148,7 +178,12 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 5. Process incoming payments
   if (payload.payments && Array.isArray(payload.payments)) {
     for (const p of payload.payments) {
-      const [existing] = await db.select().from(schema.payments).where(eq(schema.payments.id, p.id));
+      let [existing] = await db.select().from(schema.payments).where(eq(schema.payments.id, p.id));
+      if (!existing && p.receiptNumber) {
+        const [byRec] = await db.select().from(schema.payments).where(eq(schema.payments.receiptNumber, p.receiptNumber.trim()));
+        existing = byRec as typeof existing;
+      }
+
       if (!existing) {
         await db.insert(schema.payments).values({
           id: p.id,
@@ -175,7 +210,7 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
             verifiedAt: p.verifiedAt || null,
             notes: p.notes || null,
           })
-          .where(eq(schema.payments.id, p.id));
+          .where(eq(schema.payments.id, existing.id));
       }
     }
   }
@@ -207,7 +242,12 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 7. Process incoming complaints
   if (payload.complaints && Array.isArray(payload.complaints)) {
     for (const c of payload.complaints) {
-      const [existing] = await db.select().from(schema.complaints).where(eq(schema.complaints.id, c.id));
+      let [existing] = await db.select().from(schema.complaints).where(eq(schema.complaints.id, c.id));
+      if (!existing && c.complaintNumber) {
+        const [byNum] = await db.select().from(schema.complaints).where(eq(schema.complaints.complaintNumber, c.complaintNumber.trim()));
+        existing = byNum as typeof existing;
+      }
+
       if (!existing) {
         await db.insert(schema.complaints).values({
           id: c.id,
@@ -239,7 +279,7 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
             resolvedAt: c.resolvedAt || null,
             resolvedBy: c.resolvedBy || null,
           })
-          .where(eq(schema.complaints.id, c.id));
+          .where(eq(schema.complaints.id, existing.id));
       }
     }
   }
