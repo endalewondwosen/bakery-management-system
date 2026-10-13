@@ -47,7 +47,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
 
   // Editing complaint modal state
   const [editingComplaint, setEditingComplaint] = useState<Complaint | null>(null);
-  const [editCategory, setEditCategory] = useState<ComplaintCategory>('QUALITY_TEXTURE');
+  const [editCategory, setEditCategory] = useState<ComplaintCategory>('BREAD_QUALITY');
   const [editPriority, setEditPriority] = useState<ComplaintPriority>('HIGH');
   const [editDescription, setEditDescription] = useState('');
   const [editQtyAffected, setEditQtyAffected] = useState<number>(0);
@@ -316,15 +316,15 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
                   onChange={(e) => setEditCategory(e.target.value as ComplaintCategory)}
                   className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
                 >
-                  <option value="QUALITY_TEXTURE">{t.catTexture}</option>
-                  <option value="QUALITY_BURNED">{t.catBurned}</option>
-                  <option value="QUALITY_UNDERBAKED">{t.catUnderbaked}</option>
-                  <option value="QUANTITY_SHORTAGE">{t.catShortage}</option>
-                  <option value="DELIVERY_DELAY">{t.catDelay}</option>
-                  <option value="WRONG_PRODUCT">{t.catWrongProduct}</option>
-                  <option value="PACKAGING_DAMAGE">{t.catPackagingDamage}</option>
-                  <option value="STAFF_BEHAVIOR">{t.catStaff}</option>
-                  <option value="OTHER">{t.catOther}</option>
+                  <option value="BREAD_QUALITY">{t.compBreadQuality}</option>
+                  <option value="WRONG_QUANTITY">{t.compWrongQuantity}</option>
+                  <option value="WRONG_PRODUCT">{t.compWrongProduct}</option>
+                  <option value="LATE_DELIVERY">{t.compLateDelivery}</option>
+                  <option value="DELIVERY_PROBLEM">{t.compDeliveryProblem}</option>
+                  <option value="PACKAGING">{t.compPackaging}</option>
+                  <option value="PRICE_BILLING">{t.compPriceBilling}</option>
+                  <option value="DAMAGED_PRODUCT">{t.compDamagedProduct}</option>
+                  <option value="OTHER">{t.compOther}</option>
                 </select>
               </div>
 
@@ -340,7 +340,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
                   <option value="LOW">{t.priorityLow}</option>
                   <option value="MEDIUM">{t.priorityMedium}</option>
                   <option value="HIGH">{t.priorityHigh}</option>
-                  <option value="CRITICAL">{t.priorityCritical}</option>
+                  <option value="URGENT">{t.priorityUrgent}</option>
                 </select>
               </div>
 
