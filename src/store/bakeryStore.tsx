@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { enqueueMutation, drainMutationQueue, subscribeQueue, getPendingCount } from '../services/offlineQueue.ts';
+import { enqueueMutation, drainMutationQueue, subscribeQueue, getPendingCount, startAutoDrain } from '../services/offlineQueue.ts';
 import { syncApi } from '../services/apiClient.ts';
 import {
   Customer,
@@ -332,9 +332,6 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Background Bidirectional Offline-First Sync Function
   const syncWithServer = useCallback(async () => {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      return;
-    }
     if (isSyncingRef.current) {
       return; // Prevent duplicate concurrent sync runs
     }
@@ -357,6 +354,8 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         pricingAgreements: current.pricingAgreements,
       });
 
+      setIsOnline(true);
+
       if (data && data.syncedAt) {
         setLastSyncedAt(data.syncedAt);
         localStorage.setItem(`${STORAGE_KEY_PREFIX}last_synced_at`, data.syncedAt);
@@ -369,8 +368,11 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (data && data.payments && Array.isArray(data.payments)) setPayments(dedupePayments(data.payments));
       if (data && data.expenses && Array.isArray(data.expenses)) setExpenses(data.expenses);
       if (data && data.complaints && Array.isArray(data.complaints)) setComplaints(dedupeComplaints(data.complaints));
-    } catch (err) {
-      // Graceful offline fallback: logs warning without interrupting user workflow
+    } catch (err: any) {
+      // If network error occurred, mark offline status
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setIsOnline(false);
+      }
       console.warn('[Offline Sync] Backend temporarily unreachable, working in local offline mode:', err);
     } finally {
       isSyncingRef.current = false;
@@ -378,7 +380,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, []);
 
-  // Network Connectivity Event Listeners & Initial Mount Sync (runs once on mount)
+  // Recurring background synchronization & lifecycle event listeners (cross-device real-time sync)
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
@@ -387,19 +389,35 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const handleOffline = () => {
       setIsOnline(false);
     };
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        syncWithServer();
+      }
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
 
-    // Initial background synchronization attempt
-    const timer = setTimeout(() => {
+    // Start auto queue drainer (runs every 8s)
+    const stopDrainer = startAutoDrain(8000);
+
+    // Immediate sync on mount
+    syncWithServer();
+
+    // Periodic background sync loop every 8s to fetch updates made on other devices (phone, laptop, etc.)
+    const recurringSyncInterval = setInterval(() => {
       syncWithServer();
-    }, 500);
+    }, 8000);
 
     return () => {
-      clearTimeout(timer);
+      stopDrainer();
+      clearInterval(recurringSyncInterval);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
   }, [syncWithServer]);
 
@@ -559,9 +577,11 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const customer = customers.find(c => c.id === orderData.customerId);
     if (!customer) throw new Error('Customer not found');
 
-    const nextOrderNum = `ORD-${orders.length + 101}`;
-    const newOrderId = `ord-${Date.now()}`;
     const nowIso = new Date().toISOString();
+    const dateStr = nowIso.slice(0, 10).replace(/-/g, '');
+    const randSeq = Math.floor(1000 + Math.random() * 9000);
+    const nextOrderNum = `ORD-${dateStr}-${randSeq}`;
+    const newOrderId = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
     // Build items with historical frozen unit prices
     let calculatedTotal = 0;
@@ -573,7 +593,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       calculatedTotal += subtotal;
 
       return {
-        id: `item-${Date.now()}-${index}`,
+        id: `item-${Date.now().toString(36)}-${index}`,
         orderId: newOrderId,
         productId: item.productId,
         productNameEn: prod?.nameEn || 'Bread',
@@ -645,10 +665,11 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (orderData.initialPayment && orderData.initialPayment.amount > 0) {
       const isVerified = orderData.initialPayment.isVerified ?? 
         (orderData.initialPayment.paymentMethod === 'CASH');
+      const payRand = Math.floor(1000 + Math.random() * 9000);
 
       const payment: Payment = {
-        id: `pay-${Date.now()}`,
-        receiptNumber: `RCT-${payments.length + 1001}`,
+        id: `pay-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        receiptNumber: `RCT-${dateStr}-${payRand}`,
         orderId: newOrderId,
         customerId: customer.id,
         customerName: `${customer.organizationName} (${customer.name})`,
@@ -685,9 +706,8 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       });
     }
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    // Flush immediately and synchronize state with server
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
 
     return newOrder;
   };
@@ -737,9 +757,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Order ${orderId} -> ${status}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const updateOrder = (
@@ -767,7 +785,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const subtotal = it.quantity * unitPrice;
         total += subtotal;
         return {
-          id: `item-${Date.now()}-${idx}`,
+          id: `item-${Date.now().toString(36)}-${idx}`,
           orderId,
           productId: it.productId,
           productNameEn: prod?.nameEn || 'Bread',
@@ -815,9 +833,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Edit order ${orderId}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const deleteOrder = (orderId: string) => {
@@ -831,9 +847,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Delete order ${orderId}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const recordPayment = (paymentData: {
@@ -848,12 +862,14 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }): Payment => {
     const customer = customers.find(c => c.id === paymentData.customerId);
     const nowIso = new Date().toISOString();
+    const dateStr = nowIso.slice(0, 10).replace(/-/g, '');
+    const randSeq = Math.floor(1000 + Math.random() * 9000);
     const isCash = paymentData.paymentMethod === 'CASH';
     const isVerified = paymentData.isVerified ?? isCash;
 
     const newPayment: Payment = {
-      id: `pay-${Date.now()}`,
-      receiptNumber: `RCT-${payments.length + 1001}`,
+      id: `pay-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      receiptNumber: `RCT-${dateStr}-${randSeq}`,
       orderId: paymentData.orderId,
       customerId: paymentData.customerId,
       customerName: customer ? `${customer.organizationName} (${customer.name})` : 'Customer',
@@ -890,9 +906,8 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Payment ${newPayment.receiptNumber} (${newPayment.amount} ETB via ${newPayment.paymentMethod})`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    // Flush immediately and synchronize state with server
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
 
     return newPayment;
   };
@@ -920,9 +935,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Verify payment ${paymentId}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const rejectPayment = (paymentId: string) => {
@@ -945,15 +958,13 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Reject payment ${paymentId}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const recordExpense = (expenseData: Omit<Expense, 'id' | 'date'> & { date?: string }): Expense => {
     const newExpense: Expense = {
       ...expenseData,
-      id: `exp-${Date.now()}`,
+      id: `exp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       date: expenseData.date || new Date().toISOString()
     };
     setExpenses(prev => [newExpense, ...prev]);
@@ -979,9 +990,8 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Expense ${newExpense.amount} ETB (${newExpense.category})`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    // Flush immediately and synchronize state with server
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
 
     return newExpense;
   };
@@ -998,9 +1008,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Edit expense ${id}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const deleteExpense = (id: string) => {
@@ -1012,9 +1020,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Delete expense ${id}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const addCustomer = (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Customer => {
@@ -1032,7 +1038,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     const newCustomer: Customer = {
       ...customerData,
-      id: `cust-${Date.now()}`,
+      id: `cust-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       createdAt: nowIso,
       updatedAt: nowIso
     };
@@ -1048,9 +1054,8 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Customer ${customerData.organizationName || customerData.name}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    // Flush immediately and synchronize state with server
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
 
     return newCustomer;
   };
@@ -1076,9 +1081,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Update customer ${id}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const deleteCustomer = (id: string) => {
@@ -1092,9 +1095,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Delete customer ${id}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const setCustomerPricingAgreement = (
@@ -1104,7 +1105,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     notes?: string
   ) => {
     const nowIso = new Date().toISOString();
-    let agreementId = `cpa-${Date.now()}`;
+    let agreementId = `cpa-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     setPricingAgreements(prev => {
       const existingIndex = prev.findIndex(
         pa => pa.customerId === customerId && pa.productId === productId
@@ -1141,9 +1142,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Agreed price ${agreedPrice} ETB for customer ${customerId}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const fileComplaint = (complaintData: {
@@ -1159,9 +1158,12 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const order = orders.find(o => o.id === complaintData.orderId);
     const prod = products.find(p => p.id === complaintData.productId);
 
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randSeq = Math.floor(100 + Math.random() * 900);
+
     const newComplaint: Complaint = {
-      id: `comp-${Date.now()}`,
-      complaintNumber: `CMP-${complaints.length + 101}`,
+      id: `comp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      complaintNumber: `CMP-${dateStr}-${randSeq}`,
       customerId: complaintData.customerId,
       customerName: customer ? customer.organizationName : 'Customer',
       orderId: complaintData.orderId,
@@ -1198,9 +1200,8 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Complaint ${newComplaint.complaintNumber} (${newComplaint.category})`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    // Flush immediately and synchronize state with server
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
 
     return newComplaint;
   };
@@ -1240,9 +1241,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Resolve complaint ${complaintId}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const updateComplaintStatus = (complaintId: string, status: ComplaintStatus) => {
@@ -1268,9 +1267,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Edit complaint ${id}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const deleteComplaint = (id: string) => {
@@ -1282,9 +1279,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       description: `Delete complaint ${id}`,
     });
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      drainMutationQueue().catch(() => {});
-    }
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
   const resetToInitialData = () => {

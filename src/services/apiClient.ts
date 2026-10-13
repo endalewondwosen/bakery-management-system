@@ -49,6 +49,7 @@ import type {
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = endpoint.startsWith('/') ? endpoint : `/api/${endpoint}`;
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,

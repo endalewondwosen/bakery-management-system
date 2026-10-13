@@ -102,6 +102,10 @@ export function subscribeQueue(callback: QueueSubscriber): () => void {
   };
 }
 
+// Concurrency lock to prevent race conditions during queue draining
+let isDrainingMutex = false;
+let autoDrainIntervalTimer: any = null;
+
 /**
  * Sequentially drains all queued mutations against the server in FIFO order
  */
@@ -110,11 +114,11 @@ export async function drainMutationQueue(): Promise<{
   remaining: number;
   errors: string[];
 }> {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+  if (isDrainingMutex) {
     return {
       processed: 0,
       remaining: getPendingCount(),
-      errors: ['Device is offline'],
+      errors: ['Drain operation already in progress'],
     };
   }
 
@@ -123,62 +127,106 @@ export async function drainMutationQueue(): Promise<{
     return { processed: 0, remaining: 0, errors: [] };
   }
 
+  isDrainingMutex = true;
   console.log(`[OfflineQueue] Draining ${queue.length} pending mutations...`);
 
   let processedCount = 0;
   const errors: string[] = [];
   const remainingQueue: QueuedMutation[] = [...queue];
 
-  while (remainingQueue.length > 0) {
-    const item = remainingQueue[0];
-    const url = item.endpoint.startsWith('/') ? item.endpoint : `/api/${item.endpoint}`;
+  try {
+    while (remainingQueue.length > 0) {
+      const item = remainingQueue[0];
+      const url = item.endpoint.startsWith('/') ? item.endpoint : `/api/${item.endpoint}`;
 
-    try {
-      const res = await fetch(url, {
-        method: item.method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: item.body ? JSON.stringify(item.body) : undefined,
-      });
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      if (!res.ok) {
-        // If server responded with a 4xx client validation error, log and drop to prevent permanent blocking
-        if (res.status >= 400 && res.status < 500) {
-          const errText = await res.text();
-          console.warn(`[OfflineQueue] Mutation ${item.id} rejected by server (${res.status}): ${errText}`);
-          errors.push(`Rejected: ${item.description} (${res.status})`);
-          remainingQueue.shift();
-          saveQueue(remainingQueue);
-          continue;
-        } else {
-          // Server error 5xx or temporary network failure -> stop draining to preserve sequence
-          item.retryCount += 1;
-          saveQueue(remainingQueue);
-          errors.push(`Server 5xx error while executing: ${item.description}`);
-          break;
+        const res = await fetch(url, {
+          method: item.method,
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: item.body ? JSON.stringify(item.body) : undefined,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          // If server responded with 409 conflict (e.g. order/customer already exists), consider it synced
+          if (res.status === 409) {
+            processedCount++;
+            remainingQueue.shift();
+            saveQueue(remainingQueue);
+            console.log(`[OfflineQueue] Record already exists on server (409): ${item.description}`);
+            continue;
+          }
+
+          // If client validation error 4xx: drop item so queue isn't permanently blocked
+          if (res.status >= 400 && res.status < 500) {
+            const errText = await res.text();
+            console.warn(`[OfflineQueue] Mutation ${item.id} rejected by server (${res.status}): ${errText}`);
+            errors.push(`Rejected (${res.status}): ${item.description}`);
+            remainingQueue.shift();
+            saveQueue(remainingQueue);
+            continue;
+          } else {
+            // Server error 5xx: increment retry count and pause
+            item.retryCount += 1;
+            saveQueue(remainingQueue);
+            errors.push(`Server error (${res.status}): ${item.description}`);
+            break;
+          }
         }
-      }
 
-      // Success: dequeue the item
-      processedCount++;
-      remainingQueue.shift();
-      saveQueue(remainingQueue);
-      console.log(`[OfflineQueue] Successfully flushed mutation: ${item.description}`);
-    } catch (networkErr: any) {
-      // Network disconnected mid-drain
-      console.warn(`[OfflineQueue] Network disconnected while executing mutation: ${item.description}`, networkErr);
-      item.retryCount += 1;
-      saveQueue(remainingQueue);
-      errors.push(`Network error: ${networkErr?.message || 'Disconnected'}`);
-      break;
+        // Success: dequeue item
+        processedCount++;
+        remainingQueue.shift();
+        saveQueue(remainingQueue);
+        console.log(`[OfflineQueue] Successfully flushed mutation: ${item.description}`);
+      } catch (networkErr: any) {
+        console.warn(`[OfflineQueue] Network error while flushing: ${item.description}`, networkErr);
+        item.retryCount += 1;
+        saveQueue(remainingQueue);
+        errors.push(`Network error: ${networkErr?.message || 'Disconnected'}`);
+        break;
+      }
     }
+  } finally {
+    isDrainingMutex = false;
   }
 
   return {
     processed: processedCount,
     remaining: remainingQueue.length,
     errors,
+  };
+}
+
+/**
+ * Starts automatic recurring queue flush in the browser (default every 10 seconds)
+ */
+export function startAutoDrain(intervalMs = 10000): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  if (!autoDrainIntervalTimer) {
+    autoDrainIntervalTimer = setInterval(() => {
+      if (getPendingCount() > 0) {
+        drainMutationQueue().catch((err) => {
+          console.warn('[OfflineQueue] Background auto-drain failed:', err);
+        });
+      }
+    }, intervalMs);
+  }
+
+  return () => {
+    if (autoDrainIntervalTimer) {
+      clearInterval(autoDrainIntervalTimer);
+      autoDrainIntervalTimer = null;
+    }
   };
 }
 

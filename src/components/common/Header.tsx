@@ -188,19 +188,23 @@ export const Header: React.FC<HeaderProps> = ({
                   title={
                     pendingMutationsCount > 0
                       ? `${pendingMutationsCount} changes queued to sync`
-                      : (language === 'am' ? 'ከዳታቤዝ ጋር አመሳስል' : 'Sync with database')
+                      : (language === 'am' ? 'ከዳታቤዝ ጋር በቀጥታ የተገናኘ (አሁን ለማመሳሰል ይጫኑ)' : 'Live connected to database (click to sync now)')
                   }
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition cursor-pointer ${
                     pendingMutationsCount > 0
                       ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
-                      : 'bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-700'
+                      : 'bg-stone-800 hover:bg-stone-750 text-stone-300 border-stone-700'
                   }`}
                 >
-                  <RefreshCw className="w-3 h-3 text-stone-400" />
+                  {pendingMutationsCount > 0 ? (
+                    <RefreshCw className="w-3 h-3 text-amber-400" />
+                  ) : (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] inline-block" />
+                  )}
                   <span className="hidden sm:inline">
                     {pendingMutationsCount > 0
                       ? `${language === 'am' ? 'አመሳስል' : 'Sync'} (${pendingMutationsCount})`
-                      : (language === 'am' ? 'ተመሳስሏል' : 'Synced')}
+                      : (language === 'am' ? 'ተመሳስሏል' : 'Live Synced')}
                   </span>
                 </button>
 
