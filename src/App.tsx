@@ -186,8 +186,8 @@ const BakeryAppContent: React.FC = () => {
         isOpen={quickOrderOpen}
         onClose={() => setQuickOrderOpen(false)}
         preselectedCustomerId={quickOrderInitialCustomerId}
-        onSuccessOrder={(newOrderId: string) => {
-          setSelectedOrderId(newOrderId);
+        onSuccessOrder={() => {
+          setQuickOrderOpen(false);
         }}
       />
 
@@ -198,9 +198,9 @@ const BakeryAppContent: React.FC = () => {
           setCustomerFormOpen(false);
           setEditingCustomer(null);
         }}
-        onSuccess={(newCustId: string) => {
+        onSuccess={() => {
+          setCustomerFormOpen(false);
           setEditingCustomer(null);
-          setSelectedCustomerId(newCustId);
         }}
       />
 

@@ -39,6 +39,7 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [referenceNumber, setReferenceNumber] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Reset or preset defaults when opened or category changes
   useEffect(() => {
@@ -98,44 +99,48 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (computedTotal <= 0) {
-      showError(
-        language === 'am' ? 'ልክ ያልሆነ የወጪ መጠን' : 'Invalid Expense Amount',
-        language === 'am' ? 'የወጪ መጠን ከ0 በላይ መሆን አለበት!' : 'Expense amount must be greater than 0!'
-      );
+    if (computedTotal <= 0 || !description.trim() || isSubmitting) {
+      if (computedTotal <= 0) {
+        showError(
+          language === 'am' ? 'ልክ ያልሆነ የወጪ መጠን' : 'Invalid Expense Amount',
+          language === 'am' ? 'የወጪ መጠን ከ0 በላይ መሆን አለበት!' : 'Expense amount must be greater than 0!'
+        );
+      } else if (!description.trim()) {
+        showError(
+          language === 'am' ? 'ማብራሪያ ያስፈልጋል' : 'Description Required',
+          language === 'am' ? 'እባክዎ የወጪውን ማብራሪያ ያስገቡ!' : 'Please enter an expense description!'
+        );
+      }
       return;
     }
 
-    if (!description.trim()) {
-      showError(
-        language === 'am' ? 'ማብራሪያ ያስፈልጋል' : 'Description Required',
-        language === 'am' ? 'እባክዎ የወጪውን ማብራሪያ ያስገቡ!' : 'Please enter an expense description!'
+    setIsSubmitting(true);
+    try {
+      recordExpense({
+        amount: computedTotal,
+        category,
+        description: description.trim(),
+        paymentMethod,
+        referenceNumber: referenceNumber.trim() || undefined,
+        notes: notes.trim() || undefined,
+        recordedBy: 'Owner',
+        expensePeriod,
+        unit,
+        quantity: calculationMode === 'CALCULATE' && typeof quantity === 'number' ? quantity : undefined,
+        unitPrice: calculationMode === 'CALCULATE' && typeof unitPrice === 'number' ? unitPrice : undefined,
+      });
+
+      showSuccess(
+        language === 'am' ? 'ወጪ ተመዝግቧል!' : 'Expense Recorded!',
+        language === 'am'
+          ? `የ${formatCurrency(computedTotal)} ወጪ በተሳካ ሁኔታ ተመዝግቧል (${description.trim()})`
+          : `Expense of ${formatCurrency(computedTotal)} recorded (${description.trim()})`
       );
-      return;
+
+      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
-
-    recordExpense({
-      amount: computedTotal,
-      category,
-      description: description.trim(),
-      paymentMethod,
-      referenceNumber: referenceNumber.trim() || undefined,
-      notes: notes.trim() || undefined,
-      recordedBy: 'Owner',
-      expensePeriod,
-      unit,
-      quantity: calculationMode === 'CALCULATE' && typeof quantity === 'number' ? quantity : undefined,
-      unitPrice: calculationMode === 'CALCULATE' && typeof unitPrice === 'number' ? unitPrice : undefined,
-    });
-
-    showSuccess(
-      language === 'am' ? 'ወጪ ተመዝግቧል!' : 'Expense Recorded!',
-      language === 'am'
-        ? `የ${formatCurrency(computedTotal)} ወጪ በተሳካ ሁኔታ ተመዝግቧል (${description.trim()})`
-        : `Expense of ${formatCurrency(computedTotal)} recorded (${description.trim()})`
-    );
-
-    onClose();
   };
 
   return (
@@ -453,11 +458,15 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={computedTotal <= 0 || !description.trim()}
-              className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold shadow-lg transition cursor-pointer flex items-center gap-1.5"
+              disabled={computedTotal <= 0 || !description.trim() || isSubmitting}
+              className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold shadow-lg transition cursor-pointer flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{language === 'am' ? 'ወጪውን መዝግብ' : 'Record Expense'}</span>
+              <span>
+                {isSubmitting
+                  ? (language === 'am' ? 'በመመዝገብ ላይ...' : 'Recording...')
+                  : (language === 'am' ? 'ወጪውን መዝግብ' : 'Record Expense')}
+              </span>
             </button>
           </div>
         </form>

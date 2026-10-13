@@ -34,6 +34,7 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
   const [priority, setPriority] = useState<ComplaintPriority>('HIGH');
   const [quantityAffected, setQuantityAffected] = useState<number>(0);
   const [description, setDescription] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -41,41 +42,45 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerId) {
-      showError(
-        language === 'am' ? 'ደንበኛ አልተመረጠም' : 'Customer Required',
-        language === 'am' ? 'እባክዎ ደንበኛ ይምረጡ!' : 'Please select a customer!'
-      );
+    if (!customerId || !description.trim() || isSubmitting) {
+      if (!customerId) {
+        showError(
+          language === 'am' ? 'ደንበኛ አልተመረጠም' : 'Customer Required',
+          language === 'am' ? 'እባክዎ ደንበኛ ይምረጡ!' : 'Please select a customer!'
+        );
+      } else if (!description.trim()) {
+        showError(
+          language === 'am' ? 'ማብራሪያ ያስፈልጋል' : 'Description Required',
+          language === 'am' ? 'እባክዎ የቅሬታውን ዝርዝር ማብራሪያ ያስገቡ!' : 'Please describe the customer complaint!'
+        );
+      }
       return;
     }
 
-    if (!description.trim()) {
-      showError(
-        language === 'am' ? 'ማብራሪያ ያስፈልጋል' : 'Description Required',
-        language === 'am' ? 'እባክዎ የቅሬታውን ዝርዝር ማብራሪያ ያስገቡ!' : 'Please describe the customer complaint!'
+    setIsSubmitting(true);
+    try {
+      const created = fileComplaint({
+        customerId,
+        orderId: orderId || undefined,
+        productId: productId || undefined,
+        category,
+        priority,
+        quantityAffected: quantityAffected > 0 ? quantityAffected : undefined,
+        description: description.trim(),
+      });
+
+      const targetCustomer = customers.find((c) => c.id === customerId);
+      showSuccess(
+        language === 'am' ? 'ቅሬታ ተመዝግቧል!' : 'Complaint Filed!',
+        language === 'am'
+          ? `ቅሬታ ${created.complaintNumber} ለ${targetCustomer?.organizationName || 'ደንበኛ'} ተመዝግቧል`
+          : `Complaint ${created.complaintNumber} for ${targetCustomer?.organizationName || 'Customer'} registered`
       );
-      return;
+
+      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const created = fileComplaint({
-      customerId,
-      orderId: orderId || undefined,
-      productId: productId || undefined,
-      category,
-      priority,
-      quantityAffected: quantityAffected > 0 ? quantityAffected : undefined,
-      description: description.trim(),
-    });
-
-    const targetCustomer = customers.find((c) => c.id === customerId);
-    showSuccess(
-      language === 'am' ? 'ቅሬታ ተመዝግቧል!' : 'Complaint Filed!',
-      language === 'am'
-        ? `ቅሬታ ${created.complaintNumber} ለ${targetCustomer?.organizationName || 'ደንበኛ'} ተመዝግቧል`
-        : `Complaint ${created.complaintNumber} for ${targetCustomer?.organizationName || 'Customer'} registered`
-    );
-
-    onClose();
   };
 
   return (
@@ -242,10 +247,12 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={!description.trim()}
-              className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold"
+              disabled={!description.trim() || isSubmitting}
+              className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition"
             >
-              {language === 'am' ? 'ቅሬታውን መዝግብ' : 'Log Complaint'}
+              {isSubmitting
+                ? (language === 'am' ? 'በመመዝገብ ላይ...' : 'Submitting...')
+                : (language === 'am' ? 'ቅሬታውን መዝግብ' : 'Log Complaint')}
             </button>
           </div>
         </form>

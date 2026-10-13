@@ -58,6 +58,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     paymentDate: string;
   } | null>(null);
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Customer's open orders with debt
   const customerOrdersWithDebt = useMemo(() => {
@@ -150,11 +151,13 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCustomerId || amount <= 0) {
-      showError(
-        language === 'am' ? 'ልክ ያልሆነ መጠን' : 'Invalid Payment Amount',
-        language === 'am' ? 'እባክዎ ትክክለኛ የክፍያ መጠን ያስገቡ!' : 'Please enter a valid payment amount!'
-      );
+    if (!selectedCustomerId || amount <= 0 || isSubmitting) {
+      if (!selectedCustomerId || amount <= 0) {
+        showError(
+          language === 'am' ? 'ልክ ያልሆነ መጠን' : 'Invalid Payment Amount',
+          language === 'am' ? 'እባክዎ ትክክለኛ የክፍያ መጠን ያስገቡ!' : 'Please enter a valid payment amount!'
+        );
+      }
       return;
     }
 
@@ -168,28 +171,33 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       return;
     }
 
-    // Use selected order or first open order
-    const targetOrderId = selectedOrderId || (customerOrdersWithDebt[0]?.order.id || 'general-debt-allocation');
+    setIsSubmitting(true);
+    try {
+      // Use selected order or first open order
+      const targetOrderId = selectedOrderId || (customerOrdersWithDebt[0]?.order.id || 'general-debt-allocation');
 
-    const createdPayment = recordPayment({
-      orderId: targetOrderId,
-      customerId: selectedCustomerId,
-      amount,
-      paymentMethod,
-      transactionReference: transactionReference || undefined,
-      notes: notes || undefined,
-      isVerified: paymentMethod === 'CASH' ? true : markVerified,
-    });
+      const createdPayment = recordPayment({
+        orderId: targetOrderId,
+        customerId: selectedCustomerId,
+        amount,
+        paymentMethod,
+        transactionReference: transactionReference || undefined,
+        notes: notes || undefined,
+        isVerified: paymentMethod === 'CASH' ? true : markVerified,
+      });
 
-    const targetCustomer = customers.find((c) => c.id === selectedCustomerId);
-    showSuccess(
-      language === 'am' ? 'ክፍያ ተመዝግቧል!' : 'Payment Recorded!',
-      language === 'am'
-        ? `የ${formatCurrency(amount)} ክፍያ ተመዝግቧል (ደረሰኝ ${createdPayment.receiptNumber} - ${targetCustomer?.organizationName || 'ደንበኛ'})`
-        : `Payment of ${formatCurrency(amount)} recorded (${createdPayment.receiptNumber} - ${targetCustomer?.organizationName || 'Customer'})`
-    );
+      const targetCustomer = customers.find((c) => c.id === selectedCustomerId);
+      showSuccess(
+        language === 'am' ? 'ክፍያ ተመዝግቧል!' : 'Payment Recorded!',
+        language === 'am'
+          ? `የ${formatCurrency(amount)} ክፍያ ተመዝግቧል (ደረሰኝ ${createdPayment.receiptNumber} - ${targetCustomer?.organizationName || 'ደንበኛ'})`
+          : `Payment of ${formatCurrency(amount)} recorded (${createdPayment.receiptNumber} - ${targetCustomer?.organizationName || 'Customer'})`
+      );
 
-    onClose();
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -430,10 +438,12 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={amount <= 0}
-              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold"
+              disabled={amount <= 0 || isSubmitting}
+              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition"
             >
-              {language === 'am' ? 'ክፍያውን መዝግብ' : 'Save Payment'}
+              {isSubmitting
+                ? (language === 'am' ? 'በመመዝገብ ላይ...' : 'Saving...')
+                : (language === 'am' ? 'ክፍያውን መዝግብ' : 'Save Payment')}
             </button>
           </div>
         </form>
