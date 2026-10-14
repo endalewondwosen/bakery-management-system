@@ -102,12 +102,6 @@ export const LoginPage: React.FC = () => {
           <h1 className="text-2xl font-black tracking-tight text-stone-100">
             {language === 'am' ? 'ይበልጣል ዳቦ ቤት' : 'Yibeltal Bakery'}
           </h1>
-          <p className="text-xs text-amber-400 font-semibold mt-1">
-            {t.signInSubtitle}
-          </p>
-          <p className="text-[11px] text-stone-400 mt-0.5">
-            {language === 'am' ? 'የባለቤት እና አስተዳደር መግቢያ' : 'Owner & Operations Portal'}
-          </p>
         </div>
 
         {/* Error notification */}
