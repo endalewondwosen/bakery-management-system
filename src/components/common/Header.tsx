@@ -6,8 +6,7 @@
 import React from 'react';
 import { useLanguage } from '../../i18n/useLanguage.tsx';
 import { useBakeryStore } from '../../store/bakeryStore.tsx';
-import { useTheme } from '../../theme/useTheme.tsx';
-import { PhoneCall, Globe, ShieldCheck, Plus, AlertCircle, Sun, Moon, WifiOff, ChevronRight, LayoutDashboard, ShoppingBag, Users, CreditCard, BookOpenText, BadgeDollarSign, Receipt, MessageSquareWarning, Package, BarChart3, RefreshCw, Database } from 'lucide-react';
+import { PhoneCall, ShieldCheck, AlertCircle, WifiOff, ChevronRight, LayoutDashboard, ShoppingBag, Users, CreditCard, BookOpenText, BadgeDollarSign, Receipt, MessageSquareWarning, Package, BarChart3, RefreshCw, Database } from 'lucide-react';
 import { UserRole } from '../../types/domain.ts';
 import { TabType } from './Navigation.tsx';
 import { OfflineQueueModal } from './OfflineQueueModal.tsx';
@@ -26,9 +25,8 @@ export const Header: React.FC<HeaderProps> = ({
   activeSearch,
   onSearchChange,
 }) => {
-  const { language, toggleLanguage, t, role, setRole } = useLanguage();
+  const { language, t } = useLanguage();
   const { pendingVerificationCount, openComplaintsCount, isSyncing, syncWithServer, pendingMutationsCount } = useBakeryStore();
-  const { theme, isDark, toggleTheme } = useTheme();
 
   const [isOnline, setIsOnline] = React.useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [isQueueModalOpen, setIsQueueModalOpen] = React.useState(false);
@@ -239,36 +237,6 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             */}
 
-            {/* Theme Switcher (Compact icon on small screens) */}
-            <button
-              onClick={toggleTheme}
-              title={isDark ? t.themeSwitchToLight : t.themeSwitchToDark}
-              aria-label={isDark ? t.themeSwitchToLight : t.themeSwitchToDark}
-              className="flex items-center gap-1.5 p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-semibold transition cursor-pointer shrink-0"
-            >
-              {isDark ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden xl:inline">{language === 'am' ? 'ብርሃን' : 'Light'}</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="hidden xl:inline">{language === 'am' ? 'ጨለማ' : 'Dark'}</span>
-                </>
-              )}
-            </button>
-
-            {/* Language Switcher (Compact on mobile) */}
-            <button
-              onClick={toggleLanguage}
-              title="Switch Language / ቋንቋ ቀይር"
-              className="flex items-center gap-1.5 p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-semibold transition cursor-pointer shrink-0"
-            >
-              <Globe className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">{language === 'am' ? 'English' : 'አማርኛ'}</span>
-            </button>
-
             {/* Primary Action: Phone Order */}
             <button
               onClick={onOpenQuickOrder}
@@ -279,7 +247,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="whitespace-nowrap font-bold sm:hidden">{language === 'am' ? '+ትዕዛዝ' : '+Order'}</span>
             </button>
 
-            {/* User Profile Avatar Pill & Dropdown Card */}
+            {/* User Profile Avatar Pill & Dropdown Card (Houses Account & Preferences) */}
             <ProfileDropdown />
           </div>
 
