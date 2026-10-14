@@ -60,24 +60,26 @@ export async function createCustomer(dto: CreateCustomerDto): Promise<Customer> 
     };
   }
 
-  // Deduplication: if customer with the same phone and organization exists, reuse and update instead of duplicating
-  const cleanPhone = dto.phone.trim();
-  const cleanOrg = dto.organizationName.trim().toLowerCase();
-  const existingMatches = await db.select().from(schema.customers).where(eq(schema.customers.phone, cleanPhone));
-  const existingOrgMatch = existingMatches.find(
-    (c) => c.organizationName.trim().toLowerCase() === cleanOrg
-  );
-  if (existingOrgMatch) {
-    return {
-      ...existingOrgMatch,
-      branch: existingOrgMatch.branch ?? undefined,
-      managerPhone: existingOrgMatch.managerPhone ?? undefined,
-      notes: existingOrgMatch.notes ?? undefined,
-      preferredDeliveryTime: existingOrgMatch.preferredDeliveryTime ?? undefined,
-      customerType: existingOrgMatch.customerType as any,
-      status: existingOrgMatch.status as any,
-      regularPreferences: existingOrgMatch.regularPreferences ? JSON.parse(existingOrgMatch.regularPreferences) : undefined,
-    };
+  // Deduplication: only if customer with a valid real phone (at least 6 chars) and organization exists
+  const cleanPhone = (dto.phone || '').trim();
+  const cleanOrg = (dto.organizationName || '').trim().toLowerCase();
+  if (cleanPhone && cleanPhone !== '-' && cleanPhone.length >= 6 && cleanOrg) {
+    const existingMatches = await db.select().from(schema.customers).where(eq(schema.customers.phone, cleanPhone));
+    const existingOrgMatch = existingMatches.find(
+      (c) => c.organizationName.trim().toLowerCase() === cleanOrg
+    );
+    if (existingOrgMatch) {
+      return {
+        ...existingOrgMatch,
+        branch: existingOrgMatch.branch ?? undefined,
+        managerPhone: existingOrgMatch.managerPhone ?? undefined,
+        notes: existingOrgMatch.notes ?? undefined,
+        preferredDeliveryTime: existingOrgMatch.preferredDeliveryTime ?? undefined,
+        customerType: existingOrgMatch.customerType as any,
+        status: existingOrgMatch.status as any,
+        regularPreferences: existingOrgMatch.regularPreferences ? JSON.parse(existingOrgMatch.regularPreferences) : undefined,
+      };
+    }
   }
 
   const newCustomer: Customer = {

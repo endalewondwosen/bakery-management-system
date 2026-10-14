@@ -17,12 +17,28 @@ import { apiRouter } from './src/server/routes/apiRoutes.ts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function resolvePort(): number {
+  const portArgIndex = process.argv.indexOf('--port');
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    const parsed = parseInt(process.argv[portArgIndex + 1], 10);
+    if (!isNaN(parsed) && parsed !== 8080 && parsed !== 8000) return parsed;
+  }
+  if (process.env.DEFAULT_APP_PORT) {
+    const parsed = parseInt(process.env.DEFAULT_APP_PORT, 10);
+    if (!isNaN(parsed) && parsed !== 8080 && parsed !== 8000) return parsed;
+  }
+  if (process.env.PORT) {
+    const parsed = parseInt(process.env.PORT, 10);
+    if (!isNaN(parsed) && parsed !== 8080 && parsed !== 8000) return parsed;
+  }
+  return 3000;
+}
+
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const PORT = resolvePort();
   const distPath = path.resolve(__dirname, 'dist');
-  const hasDist = fs.existsSync(path.resolve(distPath, 'index.html'));
-  const isProduction = process.env.NODE_ENV === 'production' || (hasDist && process.env.NODE_ENV !== 'development');
+  const isProduction = process.env.NODE_ENV === 'production';
 
   // CORS headers and preflight handling for cross-device mobile & web access
   app.use((req, res, next) => {
@@ -71,7 +87,10 @@ async function startServer() {
   if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

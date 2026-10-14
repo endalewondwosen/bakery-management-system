@@ -384,14 +384,14 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      syncWithServer();
+      drainMutationQueue().then(() => syncWithServer()).catch(() => {});
     };
     const handleOffline = () => {
       setIsOnline(false);
     };
     const handleVisibilityOrFocus = () => {
       if (document.visibilityState === 'visible') {
-        syncWithServer();
+        drainMutationQueue().then(() => syncWithServer()).catch(() => {});
       }
     };
 
@@ -400,16 +400,24 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     window.addEventListener('focus', handleVisibilityOrFocus);
     document.addEventListener('visibilitychange', handleVisibilityOrFocus);
 
-    // Start auto queue drainer (runs every 8s)
-    const stopDrainer = startAutoDrain(8000);
+    // If service worker updates in background, re-sync immediately
+    const handleControllerChange = () => {
+      syncWithServer();
+    };
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+    }
+
+    // Start auto queue drainer (runs every 5s)
+    const stopDrainer = startAutoDrain(5000);
 
     // Immediate sync on mount
     syncWithServer();
 
-    // Periodic background sync loop every 8s to fetch updates made on other devices (phone, laptop, etc.)
+    // Periodic background sync loop every 5s to fetch updates made on other devices (phone, laptop, etc.)
     const recurringSyncInterval = setInterval(() => {
       syncWithServer();
-    }, 8000);
+    }, 5000);
 
     return () => {
       stopDrainer();
@@ -418,6 +426,9 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('focus', handleVisibilityOrFocus);
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      }
     };
   }, [syncWithServer]);
 
@@ -1025,19 +1036,33 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const addCustomer = (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Customer => {
     const nowIso = new Date().toISOString();
-    const cleanOrg = (customerData.organizationName || '').trim().toLowerCase();
+    const cleanOrg = (customerData.organizationName || customerData.name || '').trim().toLowerCase();
     const cleanPhone = (customerData.phone || '').trim();
 
-    // Prevent local duplicate if customer already registered
-    const existing = customers.find(
-      (c) => c.phone.trim() === cleanPhone && c.organizationName.trim().toLowerCase() === cleanOrg
-    );
-    if (existing) {
-      return existing;
+    // Prevent local duplicate ONLY if a real phone (at least 6 digits) and organization are present
+    if (cleanPhone && cleanPhone !== '-' && cleanPhone.length >= 6 && cleanOrg) {
+      const existing = customers.find(
+        (c) => (c.phone || '').trim() === cleanPhone && (c.organizationName || '').trim().toLowerCase() === cleanOrg
+      );
+      if (existing) {
+        return existing;
+      }
     }
 
-    const newCustomer: Customer = {
+    const orgDisplayName = (customerData.organizationName || customerData.name || 'Customer').trim();
+    const personName = (customerData.name || customerData.organizationName || orgDisplayName).trim();
+
+    const normalizedData = {
       ...customerData,
+      organizationName: orgDisplayName,
+      name: personName,
+      phone: cleanPhone || '-',
+      address: (customerData.address || '').trim() || '-',
+      customerType: customerData.customerType || 'BURGER_HOUSE',
+    };
+
+    const newCustomer: Customer = {
+      ...normalizedData,
       id: `cust-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       createdAt: nowIso,
       updatedAt: nowIso
@@ -1048,10 +1073,10 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       endpoint: '/api/customers',
       method: 'POST',
       body: {
-        ...customerData,
+        ...normalizedData,
         id: newCustomer.id,
       },
-      description: `Customer ${customerData.organizationName || customerData.name}`,
+      description: `Customer ${orgDisplayName}`,
     });
 
     // Flush immediately and synchronize state with server

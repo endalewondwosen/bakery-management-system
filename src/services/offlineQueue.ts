@@ -146,8 +146,10 @@ export async function drainMutationQueue(): Promise<{
         const res = await fetch(url, {
           method: item.method,
           credentials: 'include',
+          cache: 'no-store',
           headers: {
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store',
           },
           body: item.body ? JSON.stringify(item.body) : undefined,
           signal: controller.signal,
@@ -174,8 +176,15 @@ export async function drainMutationQueue(): Promise<{
             saveQueue(remainingQueue);
             continue;
           } else {
-            // Server error 5xx: increment retry count and pause
+            // Server error 5xx: increment retry count
             item.retryCount += 1;
+            if (item.retryCount >= 5) {
+              console.error(`[OfflineQueue] Mutation exceeded 5 retries, skipping to prevent blocking: ${item.description}`);
+              remainingQueue.shift();
+              saveQueue(remainingQueue);
+              errors.push(`Skipped after 5 retries: ${item.description}`);
+              continue;
+            }
             saveQueue(remainingQueue);
             errors.push(`Server error (${res.status}): ${item.description}`);
             break;
@@ -190,6 +199,13 @@ export async function drainMutationQueue(): Promise<{
       } catch (networkErr: any) {
         console.warn(`[OfflineQueue] Network error while flushing: ${item.description}`, networkErr);
         item.retryCount += 1;
+        if (item.retryCount >= 5) {
+          console.error(`[OfflineQueue] Network error persisted 5 retries, dropping item to unblock queue: ${item.description}`);
+          remainingQueue.shift();
+          saveQueue(remainingQueue);
+          errors.push(`Skipped after 5 retries: ${item.description}`);
+          continue;
+        }
         saveQueue(remainingQueue);
         errors.push(`Network error: ${networkErr?.message || 'Disconnected'}`);
         break;

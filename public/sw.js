@@ -1,11 +1,14 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * Yibeltal Bakery Management System - Service Worker
- * Enables offline loading & instant caching for all devices (Android, iOS, PC, Mac).
+ * Yibeltal Bakery Management System - Service Worker (v2)
+ * Enables offline loading & instant app shell caching for mobile and desktop PWA.
+ * 
+ * IMPORTANT: API requests (/api/*) are strictly BYPASSED from SW caching to guarantee
+ * instant cross-device synchronization between mobile phones, tablets, and laptops.
  */
 
-const CACHE_NAME = 'yibeltal-bakery-cache-v1';
+const CACHE_NAME = 'yibeltal-bakery-cache-v2';
 
 // Core shell assets to precache immediately on install
 const PRECACHE_ASSETS = [
@@ -17,48 +20,80 @@ const PRECACHE_ASSETS = [
 
 // 1. Install: Precache core assets & activate immediately
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-        console.warn('Pre-cache warning (some assets may cache on first fetch):', err);
+        console.warn('Pre-cache notice (non-blocking):', err);
       });
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
-// 2. Activate: Clean up old versions & claim clients
+// 2. Activate: Clean up all legacy caches and claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
+            console.log(`[SW] Deleting legacy cache: ${cacheName}`);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(async () => {
+      // Purge any cached /api/ entries that might have been stored in v1
+      try {
+        const currentCache = await caches.open(CACHE_NAME);
+        const keys = await currentCache.keys();
+        await Promise.all(
+          keys.map((request) => {
+            const u = new URL(request.url);
+            if (u.pathname.startsWith('/api') || u.pathname.includes('/api/')) {
+              console.log(`[SW] Purging cached API call: ${u.pathname}`);
+              return currentCache.delete(request);
+            }
+          })
+        );
+      } catch (e) {
+        // Non-blocking
+      }
     }).then(() => self.clients.claim())
   );
 });
 
-// 3. Fetch: Offline-first with Stale-While-Revalidate & SPA fallback
+// 3. Message listener to support immediate skipWaiting on update
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// 4. Fetch: Offline-first for UI shell, strict bypass for API sync
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
-  // Only handle GET requests
+  // Never intercept non-GET requests (POST, PUT, DELETE, PATCH handle their own queue)
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
 
-  // Ignore non-http requests (e.g. chrome-extension://)
+  // Ignore non-http requests (e.g. chrome-extension://, blob:)
   if (!url.protocol.startsWith('http')) return;
 
-  // A. Navigation requests (Opening the app from bookmark, browser reload, cold start)
+  // CRITICAL: NEVER cache or intercept /api/ requests in the Service Worker.
+  // Real-time synchronization requires direct network roundtrips to the server,
+  // while offline data is handled deterministically via IndexedDB/offlineQueue.
+  if (url.pathname.startsWith('/api') || url.pathname.includes('/api/')) {
+    return;
+  }
+
+  // A. Navigation requests (Opening the app, bookmark, refresh, cold start)
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // If valid response, clone and update cache
           if (response && response.status === 200) {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
@@ -66,20 +101,17 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(async () => {
-          // If offline / network failure, return cached index.html
           const cache = await caches.open(CACHE_NAME);
           const cachedIndex = await cache.match('/index.html') || await cache.match('/');
           if (cachedIndex) return cachedIndex;
-
-          // Fallback to whatever matched in cache
           return caches.match(request);
         })
     );
     return;
   }
 
-  // B. Asset requests (JS, CSS, Images, Fonts, Icons)
-  // Stale-While-Revalidate strategy: serve from cache if available, update in background
+  // B. Static UI Assets (JS, CSS, SVGs, Fonts, Images)
+  // Stale-While-Revalidate: serve cached version quickly, revalidate in background
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request)
@@ -90,12 +122,8 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => {
-          // Network failed, if we have cachedResponse it is already returned below
-          return null;
-        });
+        .catch(() => null);
 
-      // Return cached immediately if found, otherwise wait for network
       return cachedResponse || fetchPromise;
     })
   );

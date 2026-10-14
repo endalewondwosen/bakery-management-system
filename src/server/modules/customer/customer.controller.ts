@@ -37,12 +37,22 @@ export async function createCustomer(req: Request, res: Response) {
   try {
     const body = req.body as CreateCustomerDto;
     
-    // Contract validation
-    if (!body.name || !body.phone || !body.address || !body.customerType) {
-      return sendError(res, 'Missing required fields: name, phone, address, customerType');
+    // Friendly, unconstrained validation: at least a business/customer name is required
+    const orgName = (body.organizationName || body.name || '').trim();
+    if (!orgName) {
+      return sendError(res, 'Business name or customer name is required');
     }
 
-    const customer = await customerService.createCustomer(body);
+    const customerPayload: CreateCustomerDto = {
+      ...body,
+      organizationName: orgName,
+      name: (body.name || body.organizationName || orgName).trim(),
+      customerType: body.customerType || 'BURGER_HOUSE',
+      phone: (body.phone || '').trim() || '-',
+      address: (body.address || '').trim() || '-',
+    };
+
+    const customer = await customerService.createCustomer(customerPayload);
     return sendCreated(res, customer, 'Customer created successfully');
   } catch (err: any) {
     return sendServerError(res, err);

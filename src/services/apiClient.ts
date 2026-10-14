@@ -50,8 +50,11 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = endpoint.startsWith('/') ? endpoint : `/api/${endpoint}`;
   const response = await fetch(url, {
     credentials: 'include',
+    cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
       ...options?.headers,
     },
     ...options,
