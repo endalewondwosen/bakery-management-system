@@ -42,36 +42,49 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
   const [regularQty, setRegularQty] = useState<number>(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (customerToEdit) {
-      setOrganizationName(customerToEdit.organizationName || '');
-      setName(customerToEdit.name || '');
-      setBranch(customerToEdit.branch || '');
-      setCustomerType(customerToEdit.customerType || 'BURGER_HOUSE');
-      setPhone(customerToEdit.phone || '');
-      setManagerPhone(customerToEdit.managerPhone || '');
-      setAddress(customerToEdit.address || '');
-      setPreferredDeliveryTime(customerToEdit.preferredDeliveryTime || '07:30 AM');
-      setNotes(customerToEdit.notes || '');
+  // Track open state so we ONLY initialize once upon opening the modal
+  const prevOpenRef = React.useRef(false);
+  const prevEditIdRef = React.useRef<string | undefined>(undefined);
 
-      if (customerToEdit.regularPreferences && customerToEdit.regularPreferences.length > 0) {
-        setPreferredProdId(customerToEdit.regularPreferences[0].productId);
-        setRegularQty(customerToEdit.regularPreferences[0].regularQuantity);
+  useEffect(() => {
+    // Only run initialization if modal just opened (false -> true) or if editing a different customer
+    const justOpened = isOpen && !prevOpenRef.current;
+    const customerChanged = isOpen && customerToEdit?.id !== prevEditIdRef.current;
+
+    if (justOpened || customerChanged) {
+      if (customerToEdit) {
+        setOrganizationName(customerToEdit.organizationName || '');
+        setName(customerToEdit.name || '');
+        setBranch(customerToEdit.branch || '');
+        setCustomerType(customerToEdit.customerType || 'BURGER_HOUSE');
+        setPhone(customerToEdit.phone || '');
+        setManagerPhone(customerToEdit.managerPhone || '');
+        setAddress(customerToEdit.address || '');
+        setPreferredDeliveryTime(customerToEdit.preferredDeliveryTime || '07:30 AM');
+        setNotes(customerToEdit.notes || '');
+
+        if (customerToEdit.regularPreferences && customerToEdit.regularPreferences.length > 0) {
+          setPreferredProdId(customerToEdit.regularPreferences[0].productId);
+          setRegularQty(customerToEdit.regularPreferences[0].regularQuantity);
+        }
+      } else {
+        setOrganizationName('');
+        setName('');
+        setBranch('');
+        setCustomerType('BURGER_HOUSE');
+        setPhone('');
+        setManagerPhone('');
+        setAddress('');
+        setPreferredDeliveryTime('07:30 AM');
+        setNotes('');
+        setPreferredProdId(products[0]?.id || '');
+        setRegularQty(100);
       }
-    } else {
-      setOrganizationName('');
-      setName('');
-      setBranch('');
-      setCustomerType('BURGER_HOUSE');
-      setPhone('');
-      setManagerPhone('');
-      setAddress('');
-      setPreferredDeliveryTime('07:30 AM');
-      setNotes('');
-      setPreferredProdId(products[0]?.id || '');
-      setRegularQty(100);
     }
-  }, [customerToEdit, isOpen, products]);
+
+    prevOpenRef.current = isOpen;
+    prevEditIdRef.current = customerToEdit?.id;
+  }, [isOpen, customerToEdit?.id]);
 
   if (!isOpen) return null;
 

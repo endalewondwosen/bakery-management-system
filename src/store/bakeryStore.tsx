@@ -360,14 +360,34 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setLastSyncedAt(data.syncedAt);
         localStorage.setItem(`${STORAGE_KEY_PREFIX}last_synced_at`, data.syncedAt);
       }
-      if (data && data.customers && Array.isArray(data.customers)) setCustomers(dedupeCustomers(data.customers));
-      if (data && data.products && Array.isArray(data.products)) setProducts(data.products);
-      if (data && data.pricingAgreements && Array.isArray(data.pricingAgreements)) setPricingAgreements(data.pricingAgreements);
-      if (data && data.orders && Array.isArray(data.orders)) setOrders(dedupeOrders(data.orders));
-      if (data && data.orderItems && Array.isArray(data.orderItems)) setOrderItems(data.orderItems);
-      if (data && data.payments && Array.isArray(data.payments)) setPayments(dedupePayments(data.payments));
-      if (data && data.expenses && Array.isArray(data.expenses)) setExpenses(data.expenses);
-      if (data && data.complaints && Array.isArray(data.complaints)) setComplaints(dedupeComplaints(data.complaints));
+      if (data && data.customers && Array.isArray(data.customers)) {
+        const deduped = dedupeCustomers(data.customers);
+        setCustomers((prev) => (JSON.stringify(prev) === JSON.stringify(deduped) ? prev : deduped));
+      }
+      if (data && data.products && Array.isArray(data.products)) {
+        setProducts((prev) => (JSON.stringify(prev) === JSON.stringify(data.products) ? prev : data.products));
+      }
+      if (data && data.pricingAgreements && Array.isArray(data.pricingAgreements)) {
+        setPricingAgreements((prev) => (JSON.stringify(prev) === JSON.stringify(data.pricingAgreements) ? prev : data.pricingAgreements));
+      }
+      if (data && data.orders && Array.isArray(data.orders)) {
+        const deduped = dedupeOrders(data.orders);
+        setOrders((prev) => (JSON.stringify(prev) === JSON.stringify(deduped) ? prev : deduped));
+      }
+      if (data && data.orderItems && Array.isArray(data.orderItems)) {
+        setOrderItems((prev) => (JSON.stringify(prev) === JSON.stringify(data.orderItems) ? prev : data.orderItems));
+      }
+      if (data && data.payments && Array.isArray(data.payments)) {
+        const deduped = dedupePayments(data.payments);
+        setPayments((prev) => (JSON.stringify(prev) === JSON.stringify(deduped) ? prev : deduped));
+      }
+      if (data && data.expenses && Array.isArray(data.expenses)) {
+        setExpenses((prev) => (JSON.stringify(prev) === JSON.stringify(data.expenses) ? prev : data.expenses));
+      }
+      if (data && data.complaints && Array.isArray(data.complaints)) {
+        const deduped = dedupeComplaints(data.complaints);
+        setComplaints((prev) => (JSON.stringify(prev) === JSON.stringify(deduped) ? prev : deduped));
+      }
     } catch (err: any) {
       // If network error occurred, mark offline status
       if (typeof navigator !== 'undefined' && !navigator.onLine) {

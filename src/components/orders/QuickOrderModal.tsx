@@ -103,18 +103,21 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   }, [customers, selectedCustomerId]);
 
   // Initialize with ONLY 1 default product (Burger with egg) when modal opens
+  const prevOpenRef = React.useRef(false);
   React.useEffect(() => {
-    if (isOpen && defaultBurgerWithEgg) {
+    if (isOpen && !prevOpenRef.current && defaultBurgerWithEgg) {
       setSelectedProductIds([defaultBurgerWithEgg.id]);
       setShowDeliveryDetails(false);
       setShowPaymentSection(false);
       setPaymentOption('NONE');
     }
-  }, [isOpen, defaultBurgerWithEgg]);
+    prevOpenRef.current = isOpen;
+  }, [isOpen, defaultBurgerWithEgg?.id]);
 
-  // Update defaults when customer changes
+  // Update defaults ONLY when the selected customer actually changes
+  const prevCustIdRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
-    if (currentCustomer && defaultBurgerWithEgg) {
+    if (isOpen && selectedCustomerId && selectedCustomerId !== prevCustIdRef.current && currentCustomer && defaultBurgerWithEgg) {
       setDeliveryAddress(currentCustomer.address || '');
       setScheduledTime(currentCustomer.preferredDeliveryTime || '07:30 AM');
 
@@ -128,7 +131,8 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
         setQuantities({});
       }
     }
-  }, [currentCustomer, defaultBurgerWithEgg]);
+    prevCustIdRef.current = selectedCustomerId;
+  }, [isOpen, selectedCustomerId]);
 
   // Filtered customer list for search
   const filteredCustomers = useMemo(() => {

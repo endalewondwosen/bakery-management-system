@@ -75,11 +75,20 @@ html.light .bg-stone-900 {
 }
 
 html.light input[type="text"],
+html.light input[type="tel"],
 html.light input[type="number"],
 html.light input[type="date"],
+html.light input[type="password"],
+html.light input[type="email"],
 html.light select,
 html.light textarea {
   background-color: #ffffff;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #a8a29e !important;
+  opacity: 1 !important;
 }
 
 html.light ::selection {

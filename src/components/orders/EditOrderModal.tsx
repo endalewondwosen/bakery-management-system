@@ -52,8 +52,14 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
   const [items, setItems] = useState<EditableItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const prevOpenRef = React.useRef(false);
+  const prevOrderIdRef = React.useRef<string | undefined>(undefined);
+
   useEffect(() => {
-    if (order && isOpen) {
+    const justOpened = isOpen && !prevOpenRef.current;
+    const orderChanged = isOpen && order?.id !== prevOrderIdRef.current;
+
+    if ((justOpened || orderChanged) && order) {
       setDeliveryType(order.deliveryType);
       setDeliveryAddress(order.deliveryAddress || '');
       setScheduledTime(order.scheduledTime || '');
@@ -75,7 +81,10 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
         setItems([]);
       }
     }
-  }, [order, isOpen]);
+
+    prevOpenRef.current = isOpen;
+    prevOrderIdRef.current = order?.id;
+  }, [order?.id, isOpen]);
 
   if (!isOpen || !order) return null;
 
