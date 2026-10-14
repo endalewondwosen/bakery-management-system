@@ -11,6 +11,7 @@ import { PhoneCall, Globe, ShieldCheck, Plus, AlertCircle, Sun, Moon, WifiOff, C
 import { UserRole } from '../../types/domain.ts';
 import { TabType } from './Navigation.tsx';
 import { OfflineQueueModal } from './OfflineQueueModal.tsx';
+import { ProfileDropdown } from './ProfileDropdown.tsx';
 
 interface HeaderProps {
   currentTab?: TabType;
@@ -238,44 +239,48 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             */}
 
-            {/* Theme Switcher */}
+            {/* Theme Switcher (Compact icon on small screens) */}
             <button
               onClick={toggleTheme}
               title={isDark ? t.themeSwitchToLight : t.themeSwitchToDark}
               aria-label={isDark ? t.themeSwitchToLight : t.themeSwitchToDark}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-semibold transition cursor-pointer"
+              className="flex items-center gap-1.5 p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-semibold transition cursor-pointer shrink-0"
             >
               {isDark ? (
                 <>
                   <Sun className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">{language === 'am' ? 'ብርሃን' : 'Light'}</span>
+                  <span className="hidden xl:inline">{language === 'am' ? 'ብርሃን' : 'Light'}</span>
                 </>
               ) : (
                 <>
                   <Moon className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="hidden sm:inline">{language === 'am' ? 'ጨለማ' : 'Dark'}</span>
+                  <span className="hidden xl:inline">{language === 'am' ? 'ጨለማ' : 'Dark'}</span>
                 </>
               )}
             </button>
 
-            {/* Language Switcher */}
+            {/* Language Switcher (Compact on mobile) */}
             <button
               onClick={toggleLanguage}
               title="Switch Language / ቋንቋ ቀይር"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-semibold transition cursor-pointer"
+              className="flex items-center gap-1.5 p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-semibold transition cursor-pointer shrink-0"
             >
               <Globe className="w-3.5 h-3.5 text-amber-400" />
-              <span>{language === 'am' ? 'English' : 'አማርኛ'}</span>
+              <span className="hidden sm:inline">{language === 'am' ? 'English' : 'አማርኛ'}</span>
             </button>
 
             {/* Primary Action: Phone Order */}
             <button
               onClick={onOpenQuickOrder}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-bold text-xs sm:text-sm shadow-md transition cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-bold text-xs sm:text-sm shadow-md transition cursor-pointer shrink-0"
             >
-              <PhoneCall className="w-4 h-4 text-stone-950" />
-              <span className="whitespace-nowrap font-bold">{t.newOrder}</span>
+              <PhoneCall className="w-4 h-4 text-stone-950 shrink-0" />
+              <span className="whitespace-nowrap font-bold hidden sm:inline">{t.newOrder}</span>
+              <span className="whitespace-nowrap font-bold sm:hidden">{language === 'am' ? '+ትዕዛዝ' : '+Order'}</span>
             </button>
+
+            {/* User Profile Avatar Pill & Dropdown Card */}
+            <ProfileDropdown />
           </div>
 
         </div>

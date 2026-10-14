@@ -19,6 +19,8 @@ import { syncRouter } from '../modules/sync/sync.routes.ts';
 import * as productService from '../modules/product/product.service.ts';
 import { sendSuccess, sendError, sendServerError } from '../common/responseHelper.ts';
 
+import { authRouter } from '../modules/auth/auth.routes.ts';
+
 export const apiRouter = Router();
 
 // ============================================================================
@@ -36,6 +38,7 @@ apiRouter.get('/health', async (_req: Request, res: Response) => {
 // ============================================================================
 // DOMAIN FEATURE MODULES
 // ============================================================================
+apiRouter.use('/auth', authRouter);
 apiRouter.use('/customers', customerRouter);
 apiRouter.use('/products', productRouter);
 apiRouter.use('/orders', orderRouter);

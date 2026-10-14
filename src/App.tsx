@@ -31,8 +31,11 @@ import { ProductsPricingView } from './components/products/ProductsPricingView.t
 import { FinancialReportsView } from './components/reports/FinancialReportsView.tsx';
 import { Customer, Order, ExpensePeriod } from './types/domain.ts';
 import { ToastProvider } from './components/common/ToastContext.tsx';
+import { AuthProvider, useAuth } from './auth/AuthContext.tsx';
+import { LoginPage } from './components/auth/LoginPage.tsx';
 
 const BakeryAppContent: React.FC = () => {
+  const { isAuthenticated, isLoading } = useAuth();
   const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -75,6 +78,24 @@ const BakeryAppContent: React.FC = () => {
     setComplaintPreselectedCustomerId(customerId);
     setComplaintModalOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center text-amber-400 gap-3">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black text-2xl shadow-xl shadow-amber-500/20 animate-pulse">
+          ይ
+        </div>
+        <div className="flex items-center gap-2 text-stone-300 text-xs font-semibold">
+          <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          <span>Loading Yibeltal Bakery...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex font-sans selection:bg-amber-500/30 selection:text-amber-200">
@@ -286,11 +307,13 @@ export default function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <BakeryStoreProvider>
-          <ToastProvider>
-            <BakeryAppContent />
-          </ToastProvider>
-        </BakeryStoreProvider>
+        <AuthProvider>
+          <BakeryStoreProvider>
+            <ToastProvider>
+              <BakeryAppContent />
+            </ToastProvider>
+          </BakeryStoreProvider>
+        </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

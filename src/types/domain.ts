@@ -7,6 +7,24 @@ export type Language = 'en' | 'am';
 
 export type UserRole = 'OWNER' | 'MANAGER' | 'ORDER_STAFF' | 'DELIVERY_STAFF' | 'ACCOUNTANT';
 
+export interface User {
+  id: string;
+  phone: string;
+  name: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export interface AuthSession {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+}
+
+
 export type CustomerType = 
   | 'RESTAURANT' 
   | 'CAFE' 

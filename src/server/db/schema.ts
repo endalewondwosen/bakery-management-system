@@ -240,3 +240,51 @@ export const complaintRelations = relations(complaints, ({ one }) => ({
     references: [customers.id],
   }),
 }));
+
+// ============================================================================
+// 10. USERS TABLE (Owner & Staff Accounts)
+// ============================================================================
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  phone: text('phone').notNull().unique(),
+  name: text('name').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  salt: text('salt').notNull(),
+  role: text('role').notNull().default('OWNER'), // OWNER, MANAGER, ORDER_STAFF, etc.
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: text('created_at').notNull(),
+  lastLoginAt: text('last_login_at'),
+}, (table) => [
+  index('idx_users_phone').on(table.phone),
+  index('idx_users_role').on(table.role),
+]);
+
+// ============================================================================
+// 11. USER SESSIONS TABLE (Access & Refresh Token Tracking)
+// ============================================================================
+export const userSessions = sqliteTable('user_sessions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  accessToken: text('access_token').notNull().unique(),
+  refreshToken: text('refresh_token').notNull().unique(),
+  expiresAt: text('expires_at').notNull(),
+  createdAt: text('created_at').notNull(),
+  userAgent: text('user_agent'),
+  ipAddress: text('ip_address'),
+}, (table) => [
+  index('idx_sessions_user').on(table.userId),
+  index('idx_sessions_token').on(table.accessToken),
+  index('idx_sessions_refresh').on(table.refreshToken),
+]);
+
+export const userRelations = relations(users, ({ many }) => ({
+  sessions: many(userSessions),
+}));
+
+export const sessionRelations = relations(userSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [userSessions.userId],
+    references: [users.id],
+  }),
+}));
+

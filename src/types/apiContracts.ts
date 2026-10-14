@@ -362,3 +362,32 @@ export interface DailyPnLDto {
     operatingMarginPercent: number;
   };
 }
+
+// ============================================================================
+// AUTHENTICATION DTOs
+// ============================================================================
+export interface LoginDto {
+  phone: string;
+  password: string;
+  rememberMe?: boolean;
+}
+
+export interface LoginResponseDto {
+  user: {
+    id: string;
+    phone: string;
+    name: string;
+    role: string;
+    isActive: boolean;
+    createdAt: string;
+    lastLoginAt?: string;
+  };
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+}
+
+export interface RefreshTokenDto {
+  refreshToken: string;
+}
+

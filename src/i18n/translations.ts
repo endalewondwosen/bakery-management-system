@@ -62,6 +62,24 @@ export const translations = {
     themeSwitchToLight: 'Switch to Light Mode',
     themeSwitchToDark: 'Switch to Dark Mode',
 
+    // Authentication & Profile
+    signInTitle: 'Sign In to Bakery Management',
+    signInSubtitle: 'Internal Operations & Account Portal',
+    phoneLabel: 'Phone Number',
+    phonePlaceholder: '09XXXXXXXX',
+    passwordLabel: 'Password',
+    passwordPlaceholder: 'Enter your password',
+    signInButton: 'Sign In',
+    signingIn: 'Signing in...',
+    rememberMe: 'Keep me signed in',
+    ownerQuickFill: 'Fill Owner Credentials (0955143592)',
+    logout: 'Sign Out',
+    logoutConfirm: 'Are you sure you want to sign out?',
+    activeSession: 'Active Session',
+    accountDetails: 'Account Profile',
+    roleOwnerFull: 'Owner (Full Access)',
+    loginError: 'Invalid phone number or password. Please try again.',
+
     // Dashboard metrics
     todaySales: "Today's Sales",
     todayCollections: "Today's Collections",
@@ -299,6 +317,24 @@ export const translations = {
     themeLight: 'የብርሃን ገጽታ',
     themeSwitchToLight: 'ወደ ብርሃን ገጽታ ቀይር',
     themeSwitchToDark: 'ወደ ጨለማ ገጽታ ቀይር',
+
+    // Authentication & Profile
+    signInTitle: 'ወደ ዳቦ ቤት አስተዳደር ስርዓት ይግቡ',
+    signInSubtitle: 'የውስጥ ስራ አመራር እና የሂሳብ መግቢያ',
+    phoneLabel: 'ስልክ ቁጥር',
+    phonePlaceholder: '09XXXXXXXX',
+    passwordLabel: 'የይለፍ ቃል',
+    passwordPlaceholder: 'የይለፍ ቃልዎን ያስገቡ',
+    signInButton: 'ግባ',
+    signingIn: 'በመግባት ላይ...',
+    rememberMe: 'ሁልጊዜ እንደገባሁ ልቆይ',
+    ownerQuickFill: 'የባለቤት መለያ ሙሉ (0955143592)',
+    logout: 'ውጣ',
+    logoutConfirm: 'እርግጠኛ ነዎት ከመለያዎ መውጣት ይፈልጋሉ?',
+    activeSession: 'ንቁ ክፍለ ጊዜ',
+    accountDetails: 'የመለያ መረጃ',
+    roleOwnerFull: 'ባለቤት (ሙሉ ፈቃድ)',
+    loginError: 'የተሳሳተ ስልክ ቁጥር ወይም የይለፍ ቃል! እባክዎ ደግመው ይሞክሩ።',
 
     // Dashboard metrics
     todaySales: 'የዛሬ ሽያጭ',

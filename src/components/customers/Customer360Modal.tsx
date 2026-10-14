@@ -22,10 +22,8 @@ import {
   CheckCircle,
   AlertTriangle,
   Edit3,
-  Trash2,
 } from 'lucide-react';
 import { Customer } from '../../types/domain.ts';
-import { useToast } from '../common/ToastContext.tsx';
 
 interface Customer360ModalProps {
   customerId: string | null;
@@ -47,7 +45,6 @@ export const Customer360Modal: React.FC<Customer360ModalProps> = ({
   onEditCustomer,
 }) => {
   const { t, formatCurrency, language } = useLanguage();
-  const { showSuccess } = useToast();
   const {
     customers,
     orders,
@@ -60,11 +57,9 @@ export const Customer360Modal: React.FC<Customer360ModalProps> = ({
     setCustomerPricingAgreement,
     repeatOrder,
     getOrderItems,
-    deleteCustomer,
   } = useBakeryStore();
 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // New pricing agreement state
   const [editingProductId, setEditingProductId] = useState<string>('');
@@ -160,15 +155,6 @@ export const Customer360Modal: React.FC<Customer360ModalProps> = ({
             )}
 
             <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 text-xs transition cursor-pointer"
-              title={language === 'am' ? 'ደንበኛ ሰርዝ' : 'Delete Customer'}
-            >
-              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-            </button>
-
-            <button
               onClick={() => onTakeOrder(customer.id)}
               className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow transition cursor-pointer"
             >
@@ -182,45 +168,6 @@ export const Customer360Modal: React.FC<Customer360ModalProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Delete Confirmation Banner */}
-        {showDeleteConfirm && (
-          <div className="bg-rose-950/60 border-b border-rose-800/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-200 text-xs shrink-0">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>
-                {language === 'am'
-                  ? `ደንበኛውን "${customer.organizationName}" በእርግጥ መሰረዝ ይፈልጋሉ?`
-                  : `Are you sure you want to permanently delete "${customer.organizationName}"?`}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-3 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium"
-              >
-                {t.cancel}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  deleteCustomer(customer.id);
-                  showSuccess(
-                    language === 'am' ? 'ደንበኛ ተሰርዟል!' : 'Customer Deleted!',
-                    language === 'am'
-                      ? `${customer.organizationName} ተሰርዟል`
-                      : `${customer.organizationName} has been deleted`
-                  );
-                  onClose();
-                }}
-                className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow"
-              >
-                {language === 'am' ? 'አዎ ሰርዝ' : 'Confirm Delete'}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Financial KPI bar */}
         <div className="grid grid-cols-3 border-b border-stone-800 bg-stone-850/60 divide-x divide-stone-800 text-xs shrink-0">

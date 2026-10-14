@@ -26,8 +26,10 @@ import {
   Sun,
   Moon,
   ShieldCheck,
-  Plus
+  Plus,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from '../../auth/AuthContext.tsx';
 import { UserRole } from '../../types/domain.ts';
 
 interface MobileBottomNavProps {
@@ -42,6 +44,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenQuickOrder,
 }) => {
   const { language, toggleLanguage, t, role, setRole } = useLanguage();
+  const { user, logout } = useAuth();
   const { pendingVerificationCount, openComplaintsCount } = useBakeryStore();
   const { theme, toggleTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -294,6 +297,21 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   </button>
                 );
               })}
+            </div>
+
+            {/* Mobile Drawer Logout Button */}
+            <div className="pt-3 mt-1 border-t border-stone-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  logout();
+                }}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 border border-rose-900/50 text-rose-300 text-xs font-bold transition cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span>{t.logout} ({user?.name || 'Owner'})</span>
+              </button>
             </div>
           </div>
         </div>

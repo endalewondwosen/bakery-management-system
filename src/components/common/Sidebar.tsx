@@ -22,9 +22,11 @@ import {
   ChevronRight,
   ShieldCheck,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  LogOut,
 } from 'lucide-react';
 import { UserRole } from '../../types/domain.ts';
+import { useAuth } from '../../auth/AuthContext.tsx';
 
 interface SidebarProps {
   currentTab: TabType;
@@ -53,6 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
 }) => {
   const { language, t, role } = useLanguage();
+  const { user, logout } = useAuth();
   const { pendingVerificationCount, openComplaintsCount } = useBakeryStore();
 
   const roleLabels: Record<UserRole, { en: string; am: string }> = {
@@ -261,23 +264,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ))}
       </div>
 
-      {/* Sidebar Footer: Current User Role & Status */}
-      <div className="p-3 border-t border-stone-800 bg-stone-900/90 shrink-0">
+      {/* Sidebar Footer: Current User Profile & Quick Logout */}
+      <div className="p-3 border-t border-stone-800 bg-stone-900/95 shrink-0">
         {!collapsed ? (
-          <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-stone-850 border border-stone-800/80 text-xs">
-            <div className="min-w-0">
-              <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">
-                {language === 'am' ? 'የስራ ድርሻ' : 'Active Role'}
-              </span>
-              <span className="font-semibold text-amber-400 truncate block">
-                {roleLabels[role][language]}
-              </span>
+          <div className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl bg-stone-850 border border-stone-800/80 text-xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 font-black text-sm flex items-center justify-center shrink-0">
+                ይ
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-stone-200 truncate block leading-tight">
+                  {user?.name || (language === 'am' ? 'ባለቤት' : 'Owner')}
+                </span>
+                <span className="text-[10px] text-amber-400 font-semibold truncate block leading-tight mt-0.5">
+                  {user?.role === 'OWNER' ? (language === 'am' ? 'ባለቤት (ሙሉ ፈቃድ)' : 'Owner') : roleLabels[role][language]}
+                </span>
+              </div>
             </div>
-            <div className="w-2 h-2 rounded-full bg-emerald-400 ring-4 ring-emerald-500/20 shrink-0" title="System Online" />
+            
+            <button
+              onClick={() => logout()}
+              title={t.logout}
+              className="p-1.5 rounded-lg text-stone-400 hover:text-rose-400 hover:bg-rose-950/40 transition cursor-pointer shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         ) : (
-          <div className="flex justify-center py-1" title={`${roleLabels[role][language]} (Online)`}>
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-4 ring-emerald-500/20" />
+          <div className="flex flex-col items-center gap-2 py-1">
+            <div
+              className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 font-black text-xs flex items-center justify-center cursor-default"
+              title={`${user?.name || 'Owner'} (${user?.role || role})`}
+            >
+              ይ
+            </div>
+            <button
+              onClick={() => logout()}
+              title={t.logout}
+              className="p-1.5 rounded-lg text-stone-400 hover:text-rose-400 hover:bg-rose-950/40 transition cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
       </div>

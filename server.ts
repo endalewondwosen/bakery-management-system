@@ -12,6 +12,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { initializeDatabase } from './src/server/db/index.ts';
 import { seedDatabaseIfEmpty } from './src/server/db/seed.ts';
+import { seedDefaultOwner } from './src/server/modules/auth/auth.service.ts';
 import { apiRouter } from './src/server/routes/apiRoutes.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -75,6 +76,7 @@ async function startServer() {
   try {
     await initializeDatabase();
     await seedDatabaseIfEmpty();
+    await seedDefaultOwner();
     console.log('[SQLite + Drizzle] Database initialized and verified.');
   } catch (error) {
     console.error('[SQLite + Drizzle] Failed to initialize database:', error);

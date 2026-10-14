@@ -15,6 +15,7 @@ import type {
   Payment,
   Expense,
   Complaint,
+  User,
 } from '../types/domain.ts';
 import type {
   ApiResponse,
@@ -41,6 +42,9 @@ import type {
   VerifyReferenceResultDto,
   ParsedTelebirrResultDto,
   DailyPnLDto,
+  LoginDto,
+  LoginResponseDto,
+  RefreshTokenDto,
 } from '../types/apiContracts.ts';
 
 /**
@@ -48,15 +52,26 @@ import type {
  */
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = endpoint.startsWith('/') ? endpoint : `/api/${endpoint}`;
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    ...(options?.headers as Record<string, string> || {}),
+  };
+
+  // Attach Bearer token if present for PWA/Mobile/Web consistency
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('bakery_access_token');
+    if (token && !headers['Authorization']) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
   const response = await fetch(url, {
     credentials: 'include',
     cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      ...options?.headers,
-    },
+    headers,
     ...options,
   });
 
@@ -269,3 +284,26 @@ export const syncApi = {
       body: JSON.stringify(payload),
     }),
 };
+
+// ============================================================================
+// AUTHENTICATION API
+// ============================================================================
+export const authApi = {
+  login: (dto: LoginDto) =>
+    request<LoginResponseDto>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+  getCurrentUser: () =>
+    request<{ user: User }>('/api/auth/me'),
+  refreshToken: (dto: RefreshTokenDto) =>
+    request<{ accessToken: string; expiresAt: string }>('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+  logout: () =>
+    request<{ loggedOut: boolean }>('/api/auth/logout', {
+      method: 'POST',
+    }),
+};
+
