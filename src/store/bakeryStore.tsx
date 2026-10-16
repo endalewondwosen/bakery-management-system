@@ -180,7 +180,26 @@ interface BakeryStoreContextType {
 
 const BakeryStoreContext = createContext<BakeryStoreContextType | undefined>(undefined);
 
-const STORAGE_KEY_PREFIX = 'bakery_v1_';
+const STORAGE_KEY_PREFIX = 'bakery_v2_';
+
+// Purge legacy mock cache from browser localStorage on startup
+if (typeof window !== 'undefined') {
+  try {
+    const legacyKeys = [
+      'bakery_v1_customers',
+      'bakery_v1_orders',
+      'bakery_v1_order_items',
+      'bakery_v1_payments',
+      'bakery_v1_expenses',
+      'bakery_v1_complaints',
+      'bakery_v1_pricing_agreements',
+      'bakery_v1_last_synced_at',
+    ];
+    legacyKeys.forEach(k => localStorage.removeItem(k));
+  } catch {
+    // Ignore storage restrictions
+  }
+}
 
 function dedupeCustomers(list: Customer[]): Customer[] {
   const seenId = new Set<string>();
@@ -1339,8 +1358,8 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     localStorage.clear();
   };
 
-  // Operational metrics memoized for maximum UI responsiveness
-  const todayYMD = '2026-09-24'; // Match local simulation date or current day
+  // Operational metrics dynamically matching real local day
+  const todayYMD = new Date().toISOString().slice(0, 10);
 
   const todaySales = useMemo(() => {
     return orders
