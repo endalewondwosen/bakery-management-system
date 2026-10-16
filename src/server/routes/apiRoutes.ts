@@ -78,3 +78,16 @@ apiRouter.post('/pricing-agreements', async (req: Request, res: Response) => {
     return sendServerError(res, err);
   }
 });
+
+apiRouter.delete('/pricing-agreements/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const deleted = await productService.deletePricingAgreement(id);
+    if (!deleted) {
+      return sendError(res, `Pricing agreement with id "${id}" not found`, 404);
+    }
+    return sendSuccess(res, { id, deleted: true }, 'Pricing agreement deleted');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+});

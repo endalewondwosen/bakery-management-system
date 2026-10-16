@@ -87,6 +87,10 @@ interface BakeryStoreContextType {
   updateCustomer: (id: string, customerData: Partial<Customer>) => void;
   deleteCustomer: (id: string) => void;
 
+  addProduct: (productData: Omit<Product, 'id' | 'createdAt'>) => Product;
+  updateProduct: (id: string, productData: Partial<Product>) => void;
+  deleteProduct: (id: string) => void;
+
   updateOrder: (
     orderId: string,
     orderData: {
@@ -114,6 +118,7 @@ interface BakeryStoreContextType {
     agreedPrice: number,
     notes?: string
   ) => void;
+  deletePricingAgreement: (id: string) => void;
 
   fileComplaint: (complaintData: {
     customerId: string;
@@ -1209,6 +1214,76 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
+  const deletePricingAgreement = (id: string) => {
+    setPricingAgreements(prev => prev.filter(pa => pa.id !== id));
+
+    enqueueMutation({
+      endpoint: `/api/pricing-agreements/${id}`,
+      method: 'DELETE',
+      description: `Delete pricing agreement ${id}`,
+    });
+
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
+  };
+
+  const addProduct = (productData: Omit<Product, 'id' | 'createdAt'>): Product => {
+    const nowIso = new Date().toISOString();
+    const newProduct: Product = {
+      ...productData,
+      id: `prod-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      createdAt: nowIso,
+    };
+
+    setProducts(prev => [...prev, newProduct]);
+
+    enqueueMutation({
+      endpoint: '/api/products',
+      method: 'POST',
+      body: newProduct,
+      description: `Create product ${newProduct.nameEn}`,
+    });
+
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
+
+    return newProduct;
+  };
+
+  const updateProduct = (id: string, productData: Partial<Product>) => {
+    setProducts(prev =>
+      prev.map(p => {
+        if (p.id === id) {
+          return {
+            ...p,
+            ...productData,
+          };
+        }
+        return p;
+      })
+    );
+
+    enqueueMutation({
+      endpoint: `/api/products/${id}`,
+      method: 'PUT',
+      body: productData,
+      description: `Update product ${id}`,
+    });
+
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
+  };
+
+  const deleteProduct = (id: string) => {
+    setProducts(prev => prev.filter(p => p.id !== id));
+    setPricingAgreements(prev => prev.filter(pa => pa.productId !== id));
+
+    enqueueMutation({
+      endpoint: `/api/products/${id}`,
+      method: 'DELETE',
+      description: `Delete product ${id}`,
+    });
+
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
+  };
+
   const fileComplaint = (complaintData: {
     customerId: string;
     orderId?: string;
@@ -1443,11 +1518,15 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         addCustomer,
         updateCustomer,
         deleteCustomer,
+        addProduct,
+        updateProduct,
+        deleteProduct,
         updateOrder,
         deleteOrder,
         updateExpense,
         deleteExpense,
         setCustomerPricingAgreement,
+        deletePricingAgreement,
         fileComplaint,
         resolveComplaint,
         updateComplaint,

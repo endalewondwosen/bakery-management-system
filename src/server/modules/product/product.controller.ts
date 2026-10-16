@@ -80,3 +80,30 @@ export async function setPricingAgreement(req: Request, res: Response) {
     return sendServerError(res, err);
   }
 }
+
+export async function deleteProduct(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const deleted = await productService.deleteProduct(id);
+    if (!deleted) {
+      return sendNotFound(res, `Product with id "${id}"`);
+    }
+    return sendSuccess(res, { id, deleted: true }, 'Product deleted successfully');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+
+export async function deletePricingAgreement(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const deleted = await productService.deletePricingAgreement(id);
+    if (!deleted) {
+      return sendNotFound(res, `Pricing agreement with id "${id}"`);
+    }
+    return sendSuccess(res, { id, deleted: true }, 'Pricing agreement deleted');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+

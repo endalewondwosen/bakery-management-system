@@ -140,6 +140,10 @@ export const productApi = {
       method: 'PUT',
       body: JSON.stringify(dto),
     }),
+  delete: (id: string) =>
+    request<{ id: string; deleted: boolean }>(`/api/products/${id}`, {
+      method: 'DELETE',
+    }),
   getAgreements: () => request<CustomerPricingAgreement[]>('/api/pricing-agreements'),
   setAgreement: (dto: SetPricingAgreementDto) =>
     request<CustomerPricingAgreement>('/api/pricing-agreements', {

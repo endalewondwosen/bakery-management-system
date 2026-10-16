@@ -136,3 +136,22 @@ export async function setCustomerPricingAgreement(dto: SetPricingAgreementDto): 
 
   return newAgreement;
 }
+
+export async function deleteProduct(id: string): Promise<boolean> {
+  const [existing] = await db.select().from(schema.products).where(eq(schema.products.id, id));
+  if (!existing) return false;
+
+  // Clean up any pricing agreements referencing this product
+  await db.delete(schema.pricingAgreements).where(eq(schema.pricingAgreements.productId, id));
+  await db.delete(schema.products).where(eq(schema.products.id, id));
+  return true;
+}
+
+export async function deletePricingAgreement(id: string): Promise<boolean> {
+  const [existing] = await db.select().from(schema.pricingAgreements).where(eq(schema.pricingAgreements.id, id));
+  if (!existing) return false;
+
+  await db.delete(schema.pricingAgreements).where(eq(schema.pricingAgreements.id, id));
+  return true;
+}
+
