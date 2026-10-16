@@ -19,6 +19,44 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      (function() {
+        // 1. Force unregister any legacy service workers
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var i = 0; i < registrations.length; i++) {
+              registrations[i].unregister();
+            }
+          }).catch(function() {});
+        }
+
+        // 2. Force delete all Cache Storage caches
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            for (var i = 0; i < names.length; i++) {
+              caches.delete(names[i]);
+            }
+          }).catch(function() {});
+        }
+
+        // 3. Purge all legacy demo mock data from localStorage
+        var PURGE_FLAG = 'yibeltal_clean_slate_v6_done';
+        if (window.localStorage && !localStorage.getItem(PURGE_FLAG)) {
+          var keepKeys = {};
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && (k.indexOf('token') !== -1 || k.indexOf('auth') !== -1 || k.indexOf('theme') !== -1 || k.indexOf('language') !== -1)) {
+              keepKeys[k] = localStorage.getItem(k);
+            }
+          }
+          localStorage.clear();
+          for (var savedKey in keepKeys) {
+            localStorage.setItem(savedKey, keepKeys[savedKey]);
+          }
+          localStorage.setItem(PURGE_FLAG, 'true');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
