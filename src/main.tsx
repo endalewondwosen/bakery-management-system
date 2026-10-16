@@ -7,11 +7,35 @@ import './index.css';
 if (typeof window !== 'undefined' && 'caches' in window) {
   caches.keys().then((keys) => {
     keys.forEach((key) => {
-      if (key === 'yibeltal-bakery-cache-v1') {
+      if (key !== 'yibeltal-bakery-cache-v3') {
         caches.delete(key).catch(() => {});
       }
     });
   }).catch(() => {});
+}
+
+// Complete clean slate migration: purge all old demo/mock data from localStorage
+if (typeof window !== 'undefined' && window.localStorage) {
+  const CLEAN_FLAG = 'yibeltal_clean_slate_v3_applied';
+  if (!localStorage.getItem(CLEAN_FLAG)) {
+    try {
+      const keysToClear: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('bakery_') || k.startsWith('offline_'))) {
+          // Keep user auth credentials/token, theme and language
+          if (k.includes('token') || k.includes('user') || k.includes('auth') || k.includes('theme') || k.includes('language')) {
+            continue;
+          }
+          keysToClear.push(k);
+        }
+      }
+      keysToClear.forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem(CLEAN_FLAG, 'true');
+    } catch {
+      // Ignore
+    }
+  }
 }
 
 // Register and auto-update Service Worker for offline operation & seamless sync

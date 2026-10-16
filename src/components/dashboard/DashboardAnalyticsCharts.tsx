@@ -42,10 +42,6 @@ export const DashboardAnalyticsCharts: React.FC = () => {
     const monday = new Date(today);
     monday.setDate(today.getDate() + distanceToMonday);
 
-    // Realistic baseline trend for Ethiopian commercial bakery
-    const baselineRevenues = [14200, 15800, 16900, 17500, 19200, 21400, 18600];
-    const baselineVolumes = [640, 710, 760, 790, 860, 960, 830];
-
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
@@ -57,19 +53,13 @@ export const DashboardAnalyticsCharts: React.FC = () => {
       const matchingOrders = orders.filter(
         (o) => o.orderDate.startsWith(dateStr) && o.status !== 'CANCELLED'
       );
-      let revenue = matchingOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+      const revenue = matchingOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
       // Sum items
       const matchingOrderIds = new Set(matchingOrders.map((o) => o.id));
-      let volume = orderItems
+      const volume = orderItems
         .filter((item) => matchingOrderIds.has(item.orderId))
         .reduce((sum, item) => sum + item.quantity, 0);
-
-      // If no recorded orders for this day yet, use baseline so trend is rich and informative
-      if (revenue === 0) {
-        revenue = baselineRevenues[i];
-        volume = baselineVolumes[i];
-      }
 
       days.push({
         label,
@@ -86,8 +76,8 @@ export const DashboardAnalyticsCharts: React.FC = () => {
   // Max value for scaling
   const maxWeeklyValue = useMemo(() => {
     const values = weeklyData.map((d) => (trendMetric === 'REVENUE' ? d.revenue : d.volume));
-    const max = Math.max(...values, 1);
-    return max * 1.15; // 15% headroom
+    const max = Math.max(...values, 0);
+    return max > 0 ? max * 1.15 : 1000; // 15% headroom or default 1000 track
   }, [weeklyData, trendMetric]);
 
   // 2. Calculate Product Variety Share (Donut Chart)
@@ -105,16 +95,7 @@ export const DashboardAnalyticsCharts: React.FC = () => {
       map[item.productId].revenue += item.subtotal;
     });
 
-    // Provide baseline if order items are low
-    const totalCurrentRev = Object.values(map).reduce((sum, v) => sum + v.revenue, 0);
-    if (totalCurrentRev === 0) {
-      if (products[0]) map[products[0].id] = { qty: 220, revenue: 5500 };
-      if (products[1]) map[products[1].id] = { qty: 150, revenue: 3300 };
-      if (products[2]) map[products[2].id] = { qty: 120, revenue: 1800 };
-      if (products[3]) map[products[3].id] = { qty: 45, revenue: 1350 };
-    }
-
-    const totalRev = Object.values(map).reduce((sum, v) => sum + v.revenue, 0) || 1;
+    const totalRev = Object.values(map).reduce((sum, v) => sum + v.revenue, 0);
 
     // Distinct palette
     const colors = [
@@ -165,7 +146,7 @@ export const DashboardAnalyticsCharts: React.FC = () => {
 
   const collectionRatio = useMemo(() => {
     const totalFinancialInvoiced = totalVerifiedCollections + totalOutstandingDebt;
-    if (totalFinancialInvoiced === 0) return { collected: 78, debt: 22 };
+    if (totalFinancialInvoiced === 0) return { collected: 0, debt: 0 };
     const collectedPct = Math.round((totalVerifiedCollections / totalFinancialInvoiced) * 100);
     const debtPct = 100 - collectedPct;
     return {
@@ -252,8 +233,10 @@ export const DashboardAnalyticsCharts: React.FC = () => {
                 const isHovered = hoveredBarIndex === index;
                 const isToday = d.isToday;
                 const value = trendMetric === 'REVENUE' ? d.revenue : d.volume;
-                // Calculate height percentage (min 15% for visibility, max 100%)
-                const heightPercent = Math.max(15, Math.min(100, Math.round((value / maxWeeklyValue) * 100)));
+                // Calculate height percentage (0% when value is 0, min 6% when positive, max 100%)
+                const heightPercent = value > 0 && maxWeeklyValue > 0
+                  ? Math.max(6, Math.min(100, Math.round((value / maxWeeklyValue) * 100)))
+                  : 0;
 
                 return (
                   <div

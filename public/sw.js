@@ -8,7 +8,7 @@
  * instant cross-device synchronization between mobile phones, tablets, and laptops.
  */
 
-const CACHE_NAME = 'yibeltal-bakery-cache-v2';
+const CACHE_NAME = 'yibeltal-bakery-cache-v3';
 
 // Core shell assets to precache immediately on install
 const PRECACHE_ASSETS = [

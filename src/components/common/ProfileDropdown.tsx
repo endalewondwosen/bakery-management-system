@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   User as UserIcon,
+  RotateCcw,
 } from 'lucide-react';
 
 export const ProfileDropdown: React.FC = () => {
@@ -31,6 +32,31 @@ export const ProfileDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handlePurgeCacheAndReload = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('yibeltal_auth_token');
+        const rToken = localStorage.getItem('yibeltal_auth_refresh_token');
+        const userJson = localStorage.getItem('yibeltal_auth_user');
+
+        localStorage.clear();
+
+        if (token) localStorage.setItem('yibeltal_auth_token', token);
+        if (rToken) localStorage.setItem('yibeltal_auth_refresh_token', rToken);
+        if (userJson) localStorage.setItem('yibeltal_auth_user', userJson);
+
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+
+        window.location.reload();
+      }
+    } catch {
+      window.location.reload();
+    }
+  };
 
   // Close dropdown on outside click or escape key
   useEffect(() => {
@@ -173,6 +199,22 @@ export const ProfileDropdown: React.FC = () => {
               </span>
               <span className="px-2 py-0.5 rounded-md bg-stone-800 border border-stone-700 text-stone-300 font-bold text-[11px]">
                 {isDark ? 'Dark' : 'Light'}
+              </span>
+            </button>
+
+            {/* Clear Browser Cache & Clean Slate row */}
+            <button
+              onClick={handlePurgeCacheAndReload}
+              type="button"
+              title={language === 'am' ? 'የአሳሽ መሸጎጫን አጽዳ እና ዳግም ጫን' : 'Clear browser cache and reload'}
+              className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium text-stone-200 hover:bg-stone-800 hover:text-stone-100 transition cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-amber-400" />
+                <span>{language === 'am' ? 'መሸጎጫ አጽዳ (Reload)' : 'Clean Cache & Resync'}</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-stone-800 border border-stone-700 text-amber-400 font-bold text-[11px]">
+                {language === 'am' ? 'አድስ' : 'Reset'}
               </span>
             </button>
           </div>
