@@ -202,7 +202,8 @@ export async function getUserBySessionToken(accessToken: string): Promise<AuthRe
   if (!accessToken) return null;
 
   const now = new Date().toISOString();
-  const sessions = await db
+  // Check active session by accessToken
+  let sessions = await db
     .select()
     .from(schema.userSessions)
     .where(
@@ -212,6 +213,20 @@ export async function getUserBySessionToken(accessToken: string): Promise<AuthRe
       )
     )
     .limit(1);
+
+  // Fallback check by refreshToken in case access token was rotated
+  if (sessions.length === 0) {
+    sessions = await db
+      .select()
+      .from(schema.userSessions)
+      .where(
+        and(
+          eq(schema.userSessions.refreshToken, accessToken),
+          gt(schema.userSessions.expiresAt, now)
+        )
+      )
+      .limit(1);
+  }
 
   if (sessions.length === 0) return null;
 
@@ -223,6 +238,21 @@ export async function getUserBySessionToken(accessToken: string): Promise<AuthRe
     .limit(1);
 
   if (users.length === 0 || !users[0].isActive) return null;
+
+  // Auto-extend active session if expiration is within 14 days
+  try {
+    const expiresDate = new Date(session.expiresAt);
+    if (expiresDate.getTime() - Date.now() < 14 * 24 * 60 * 60 * 1000) {
+      const extended = new Date();
+      extended.setDate(extended.getDate() + 30);
+      await db
+        .update(schema.userSessions)
+        .set({ expiresAt: extended.toISOString() })
+        .where(eq(schema.userSessions.id, session.id));
+    }
+  } catch {
+    // Non-fatal
+  }
 
   const user = users[0];
   return {

@@ -36,15 +36,29 @@ export const ProfileDropdown: React.FC = () => {
   const handlePurgeCacheAndReload = async () => {
     try {
       if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('yibeltal_auth_token');
-        const rToken = localStorage.getItem('yibeltal_auth_refresh_token');
-        const userJson = localStorage.getItem('yibeltal_auth_user');
+        // Preserve all essential authentication and user preferences
+        const authKeys = [
+          'bakery_access_token',
+          'bakery_refresh_token',
+          'bakery_user_profile',
+          'bakery_user_role',
+          'yibeltal_auth_token',
+          'yibeltal_auth_refresh_token',
+          'yibeltal_auth_user',
+          'yibeltal_theme',
+          'yibeltal_language',
+        ];
+        const preserved: Record<string, string> = {};
+        for (const k of authKeys) {
+          const val = localStorage.getItem(k);
+          if (val) preserved[k] = val;
+        }
 
         localStorage.clear();
 
-        if (token) localStorage.setItem('yibeltal_auth_token', token);
-        if (rToken) localStorage.setItem('yibeltal_auth_refresh_token', rToken);
-        if (userJson) localStorage.setItem('yibeltal_auth_user', userJson);
+        for (const [k, v] of Object.entries(preserved)) {
+          localStorage.setItem(k, v);
+        }
 
         if ('caches' in window) {
           const keys = await caches.keys();

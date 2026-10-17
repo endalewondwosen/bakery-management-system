@@ -110,8 +110,8 @@ export const DashboardAnalyticsCharts: React.FC = () => {
     return products.map((prod, index) => {
       const rev = map[prod.id]?.revenue || 0;
       const qty = map[prod.id]?.qty || 0;
-      const percent = Math.max(5, Math.round((rev / totalRev) * 100));
-      const angle = (rev / totalRev) * 360;
+      const percent = totalRev > 0 ? Math.round((rev / totalRev) * 100) : 0;
+      const angle = totalRev > 0 ? (rev / totalRev) * 360 : 0;
       const startAngle = currentAngle;
       currentAngle += angle;
 
@@ -354,11 +354,17 @@ export const DashboardAnalyticsCharts: React.FC = () => {
                   const circumference = 2 * Math.PI * 38; // ~238.76
                   let accumulatedOffset = 0;
 
-                  return productShareData.map((item) => {
-                    const strokeLength = (item.percentage / 100) * circumference;
-                    const dashArray = `${strokeLength} ${circumference}`;
-                    const dashOffset = -accumulatedOffset;
-                    accumulatedOffset += strokeLength;
+                  const itemsWithShare = productShareData.filter((i) => (i.percentage || 0) > 0);
+                  if (itemsWithShare.length === 0) {
+                    return null;
+                  }
+
+                  return itemsWithShare.map((item) => {
+                    const strokeLength = Math.max(0, ((item.percentage || 0) / 100) * circumference);
+                    const safeStrokeLength = Number.isFinite(strokeLength) ? strokeLength : 0;
+                    const dashArray = `${safeStrokeLength} ${circumference}`;
+                    const dashOffset = Number.isFinite(accumulatedOffset) ? -accumulatedOffset : 0;
+                    accumulatedOffset += safeStrokeLength;
 
                     return (
                       <circle

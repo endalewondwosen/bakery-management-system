@@ -62,7 +62,9 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
   // Attach Bearer token if present for PWA/Mobile/Web consistency
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('bakery_access_token');
+    const token =
+      localStorage.getItem('bakery_access_token') ||
+      localStorage.getItem('yibeltal_auth_token');
     if (token && !headers['Authorization']) {
       headers['Authorization'] = `Bearer ${token}`;
     }

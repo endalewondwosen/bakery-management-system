@@ -10,10 +10,21 @@ import type { Request, Response } from 'express';
 import * as authService from './auth.service.ts';
 import { sendSuccess, sendError, sendServerError } from '../../common/responseHelper.ts';
 
+function getCookieFlags(req: Request, maxAge: number): string {
+  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  if (isHttps) {
+    return `Path=/; HttpOnly; SameSite=None; Secure; Partitioned; Max-Age=${maxAge}`;
+  }
+  return `Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
+}
+
 function extractToken(req: Request): string | null {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7).trim();
+    const bearer = authHeader.substring(7).trim();
+    if (bearer && bearer !== 'null' && bearer !== 'undefined') {
+      return bearer;
+    }
   }
 
   // Fallback to cookie
@@ -22,10 +33,12 @@ function extractToken(req: Request): string | null {
     const cookies = cookieHeader.split(';').map(c => c.trim());
     for (const c of cookies) {
       if (c.startsWith('bakery_token=')) {
-        return c.substring('bakery_token='.length).trim();
+        const val = c.substring('bakery_token='.length).trim();
+        if (val && val !== 'null' && val !== 'undefined') return val;
       }
       if (c.startsWith('auth_token=')) {
-        return c.substring('auth_token='.length).trim();
+        const val = c.substring('auth_token='.length).trim();
+        if (val && val !== 'null' && val !== 'undefined') return val;
       }
     }
   }
@@ -47,12 +60,9 @@ export async function login(req: Request, res: Response): Promise<Response> {
 
     const result = await authService.login(phone, password, rememberMe !== false, clientInfo);
 
-    // Set secure HttpOnly cookie for web browser session protection
+    // Set secure HttpOnly cookie for web browser session protection (iFrame friendly)
     const maxAge = (rememberMe !== false ? 30 : 7) * 24 * 60 * 60;
-    res.setHeader(
-      'Set-Cookie',
-      `bakery_token=${result.accessToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`
-    );
+    res.setHeader('Set-Cookie', `bakery_token=${result.accessToken}; ${getCookieFlags(req, maxAge)}`);
 
     return sendSuccess(res, result, 'Successfully authenticated');
   } catch (err: any) {
@@ -91,10 +101,7 @@ export async function refreshToken(req: Request, res: Response): Promise<Respons
     const result = await authService.refreshAccessToken(refreshToken);
 
     // Update cookie
-    res.setHeader(
-      'Set-Cookie',
-      `bakery_token=${result.accessToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${14 * 24 * 60 * 60}`
-    );
+    res.setHeader('Set-Cookie', `bakery_token=${result.accessToken}; ${getCookieFlags(req, 14 * 24 * 60 * 60)}`);
 
     return sendSuccess(res, result, 'Token refreshed');
   } catch (err: any) {
@@ -110,10 +117,7 @@ export async function logout(req: Request, res: Response): Promise<Response> {
     }
 
     // Expire cookie
-    res.setHeader(
-      'Set-Cookie',
-      `bakery_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`
-    );
+    res.setHeader('Set-Cookie', `bakery_token=; ${getCookieFlags(req, 0)}`);
 
     return sendSuccess(res, { loggedOut: true }, 'Successfully logged out');
   } catch (err: any) {

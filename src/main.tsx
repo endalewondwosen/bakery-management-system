@@ -23,8 +23,8 @@ if (typeof window !== 'undefined' && window.localStorage) {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (k && (k.startsWith('bakery_') || k.startsWith('offline_'))) {
-          // Keep user auth credentials/token, theme and language
-          if (k.includes('token') || k.includes('user') || k.includes('auth') || k.includes('theme') || k.includes('language')) {
+          // Keep user auth credentials/token, theme, language, and role
+          if (k.includes('token') || k.includes('user') || k.includes('auth') || k.includes('theme') || k.includes('language') || k.includes('role')) {
             continue;
           }
           keysToClear.push(k);
