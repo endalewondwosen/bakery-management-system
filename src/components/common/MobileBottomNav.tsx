@@ -189,7 +189,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
       {/* Slide-Up Mobile "More" Drawer */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-stone-950/80 backdrop-blur-sm md:hidden animate-fade-in">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end modal-backdrop-soft md:hidden animate-fade-in">
           <div
             className="fixed inset-0"
             onClick={() => setDrawerOpen(false)}

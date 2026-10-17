@@ -64,9 +64,26 @@ html.light .text-stone-950 {
   color: #12100e !important;
 }
 
-/* Modal dark scrim overlay stays dark in light mode */
-html.light .bg-stone-950\/80 {
-  background-color: rgba(20, 18, 16, 0.65) !important;
+/* Softer & Clearer Modal Backdrop Overlay (Option C)
+   Allows sidebar, header, and page layout to remain clearly visible and recognizable */
+.modal-backdrop-soft,
+.bg-stone-950\/80,
+.bg-stone-950\/85,
+.bg-black\/75,
+.bg-black\/80 {
+  background-color: rgba(12, 10, 9, 0.38) !important;
+  backdrop-filter: blur(1.5px) !important;
+  -webkit-backdrop-filter: blur(1.5px) !important;
+}
+
+html.light .modal-backdrop-soft,
+html.light .bg-stone-950\/80,
+html.light .bg-stone-950\/85,
+html.light .bg-black\/75,
+html.light .bg-black\/80 {
+  background-color: rgba(45, 38, 28, 0.26) !important;
+  backdrop-filter: blur(1.5px) !important;
+  -webkit-backdrop-filter: blur(1.5px) !important;
 }
 
 /* Clean surface shadows for light mode cards */

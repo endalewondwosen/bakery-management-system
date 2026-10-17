@@ -290,7 +290,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
 
       {/* Edit Complaint Modal */}
       {editingComplaint && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-950/85 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-backdrop-soft">
           <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md p-5 text-xs space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-stone-800 pb-3">
               <h3 className="font-bold text-stone-100 text-sm flex items-center gap-2">
@@ -393,7 +393,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
 
       {/* Delete Complaint Confirmation Dialog */}
       {complaintToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-950/85 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-backdrop-soft">
           <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md p-5 text-xs space-y-4 shadow-2xl">
             <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm">
               <AlertTriangle className="w-5 h-5 shrink-0" />
@@ -437,7 +437,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
 
       {/* Resolve Dialog Modal */}
       {resolvingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-950/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-backdrop-soft">
           <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md p-5 text-xs space-y-4 shadow-2xl">
             <h3 className="font-bold text-stone-100 text-sm">
               {language === 'am' ? 'የቅሬታ መፍትሄ መመዝገቢያ' : 'Record Complaint Resolution'}

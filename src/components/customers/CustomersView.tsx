@@ -251,7 +251,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
       {/* Delete Confirmation Modal */}
       {customerToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-950/85 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-backdrop-soft">
           <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md p-5 text-xs space-y-4 shadow-2xl">
             <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm">
               <AlertTriangle className="w-5 h-5 shrink-0" />

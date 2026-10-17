@@ -98,7 +98,7 @@ export const Customer360Modal: React.FC<Customer360ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex sm:items-center sm:justify-center p-0 sm:p-4 bg-stone-950/85 backdrop-blur-sm overflow-hidden">
+    <div className="fixed inset-0 z-50 flex sm:items-center sm:justify-center p-0 sm:p-4 modal-backdrop-soft overflow-hidden">
       <div className="bg-stone-900 sm:border border-stone-800 rounded-none sm:rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden h-full sm:h-auto sm:max-h-[92vh] flex flex-col">
         
         {/* Header */}

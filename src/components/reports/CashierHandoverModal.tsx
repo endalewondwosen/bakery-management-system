@@ -112,7 +112,7 @@ export const CashierHandoverModal: React.FC<CashierHandoverModalProps> = ({ isOp
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 modal-backdrop-soft overflow-y-auto">
       <div className="relative w-full max-w-3xl bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl overflow-hidden my-auto text-xs">
         
         {/* Header Controls (Hidden during print) */}
