@@ -553,10 +553,12 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const getCustomerBalance = (customerId: string) => {
     const customerOrders = orders.filter(o => o.customerId === customerId && o.status !== 'CANCELLED');
+    const customerOrderIds = new Set(customerOrders.map(o => o.id));
     const totalInvoiced = customerOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
     const customerPayments = payments.filter(
-      p => p.customerId === customerId && p.verificationStatus === 'VERIFIED'
+      p => (p.customerId === customerId || (p.orderId && customerOrderIds.has(p.orderId))) &&
+           p.verificationStatus === 'VERIFIED'
     );
     const totalPaid = customerPayments.reduce((sum, p) => sum + p.amount, 0);
 
@@ -571,33 +573,36 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const getCustomerStatement = (customerId: string): CustomerStatementEntry[] => {
     const customerOrders = orders
-      .filter(o => o.customerId === customerId && o.status !== 'CANCELLED')
-      .map(o => ({
-        date: o.orderDate,
-        type: 'ORDER' as const,
-        referenceId: o.orderNumber,
-        description: `Order ${o.orderNumber} (${o.deliveryType === 'DELIVERY' ? 'Delivery' : 'Pickup'})`,
-        debit: o.totalAmount,
-        credit: 0,
-        runningBalance: 0,
-        status: o.status
-      }));
+      .filter(o => o.customerId === customerId && o.status !== 'CANCELLED');
+    const customerOrderIds = new Set(customerOrders.map(o => o.id));
+
+    const orderEntries = customerOrders.map(o => ({
+      date: o.orderDate,
+      type: 'ORDER' as const,
+      referenceId: o.orderNumber,
+      description: `Order ${o.orderNumber} (${o.deliveryType === 'DELIVERY' ? 'Delivery' : 'Pickup'})`,
+      debit: o.totalAmount,
+      credit: 0,
+      runningBalance: 0,
+      status: o.status
+    }));
 
     const customerPayments = payments
-      .filter(p => p.customerId === customerId)
-      .map(p => ({
-        date: p.paymentDate,
-        type: 'PAYMENT' as const,
-        referenceId: p.receiptNumber,
-        description: `Payment ${p.receiptNumber} (${p.paymentMethod}${p.transactionReference ? ` - ${p.transactionReference}` : ''})`,
-        debit: 0,
-        credit: p.verificationStatus === 'VERIFIED' ? p.amount : 0,
-        runningBalance: 0,
-        status: p.verificationStatus
-      }));
+      .filter(p => (p.customerId === customerId || (p.orderId && customerOrderIds.has(p.orderId))));
+
+    const paymentEntries = customerPayments.map(p => ({
+      date: p.paymentDate,
+      type: 'PAYMENT' as const,
+      referenceId: p.receiptNumber,
+      description: `Payment ${p.receiptNumber} (${p.paymentMethod}${p.transactionReference ? ` - ${p.transactionReference}` : ''})`,
+      debit: 0,
+      credit: p.verificationStatus === 'VERIFIED' ? p.amount : 0,
+      runningBalance: 0,
+      status: p.verificationStatus
+    }));
 
     // Sort chronologically ascending
-    const combined = [...customerOrders, ...customerPayments].sort(
+    const combined = [...orderEntries, ...paymentEntries].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
@@ -1472,15 +1477,12 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [expenses]);
 
   const totalOutstandingDebt = useMemo(() => {
-    // Total invoiced across all active orders minus total verified payments
-    const totalInvoiced = orders
-      .filter(o => o.status !== 'CANCELLED')
-      .reduce((sum, o) => sum + o.totalAmount, 0);
-    const totalVerifiedPaid = payments
-      .filter(p => p.verificationStatus === 'VERIFIED')
-      .reduce((sum, p) => sum + p.amount, 0);
-    return Math.max(0, totalInvoiced - totalVerifiedPaid);
-  }, [orders, payments]);
+    // Sum of all customers' calculated outstanding debt for complete consistency with Debt Ledger
+    return customers.reduce((sum, c) => {
+      const bal = getCustomerBalance(c.id);
+      return sum + bal.outstandingBalance;
+    }, 0);
+  }, [customers, orders, payments]);
 
   const pendingVerificationCount = useMemo(() => {
     return payments.filter(p => p.verificationStatus === 'PENDING_VERIFICATION').length;

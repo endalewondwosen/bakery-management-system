@@ -27,7 +27,7 @@ export const DebtLedgerView: React.FC<DebtLedgerViewProps> = ({
   onSelectCustomer,
 }) => {
   const { t, formatCurrency, language } = useLanguage();
-  const { customers, getCustomerBalance, totalOutstandingDebt } = useBakeryStore();
+  const { customers, orders, payments, getCustomerBalance, totalOutstandingDebt } = useBakeryStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [onlyWithDebt, setOnlyWithDebt] = useState(true);
@@ -54,7 +54,7 @@ export const DebtLedgerView: React.FC<DebtLedgerViewProps> = ({
         );
       })
       .sort((a, b) => b.outstandingBalance - a.outstandingBalance); // Highest debt first
-  }, [customers, getCustomerBalance, onlyWithDebt, searchTerm]);
+  }, [customers, orders, payments, getCustomerBalance, onlyWithDebt, searchTerm]);
 
   return (
     <div className="space-y-5">

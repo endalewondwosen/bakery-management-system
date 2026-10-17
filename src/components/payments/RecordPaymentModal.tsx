@@ -74,23 +74,48 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
   // Overall customer debt
   const customerBalance = useMemo(() => {
-    if (!selectedCustomerId) return { outstandingBalance: 0 };
+    if (!selectedCustomerId) return { totalInvoiced: 0, totalPaid: 0, outstandingBalance: 0 };
     return getCustomerBalance(selectedCustomerId);
   }, [selectedCustomerId, getCustomerBalance]);
 
-  // Sync default amount when order selection changes
-  React.useEffect(() => {
-    if (selectedOrderId) {
-      const out = getOrderOutstandingAmount(selectedOrderId);
-      setAmount(out);
-    } else if (customerOrdersWithDebt.length > 0) {
-      setSelectedOrderId(customerOrdersWithDebt[0].order.id);
-      setAmount(customerOrdersWithDebt[0].outstanding);
-    } else {
-      setSelectedOrderId('');
-      setAmount(customerBalance.outstandingBalance);
+  // Initialize form when modal opens or props change
+  const prevOpenRef = React.useRef(false);
+  const prevCustPropRef = React.useRef<string | undefined>(undefined);
+  const prevOrderPropRef = React.useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const justOpened = isOpen && !prevOpenRef.current;
+    const custChanged = isOpen && preselectedCustomerId !== prevCustPropRef.current;
+    const orderChanged = isOpen && preselectedOrderId !== prevOrderPropRef.current;
+
+    if (justOpened || custChanged || orderChanged) {
+      const targetCustId = preselectedCustomerId || selectedCustomerId || customers[0]?.id || '';
+      setSelectedCustomerId(targetCustId);
+
+      const targetOrderId = preselectedOrderId || '';
+      setSelectedOrderId(targetOrderId);
+
+      // Pre-fill suggested settlement amount
+      if (targetOrderId) {
+        setAmount(getOrderOutstandingAmount(targetOrderId));
+      } else if (targetCustId) {
+        const bal = getCustomerBalance(targetCustId);
+        setAmount(bal.outstandingBalance);
+      }
+
+      setTransactionReference('');
+      setNotes('');
+      setDuplicateWarning(null);
+      setShowSmsParser(false);
+      setSmsInput('');
+      setPaymentMethod('CASH');
+      setMarkVerified(true);
     }
-  }, [selectedOrderId, selectedCustomerId]);
+
+    prevOpenRef.current = isOpen;
+    prevCustPropRef.current = preselectedCustomerId;
+    prevOrderPropRef.current = preselectedOrderId;
+  }, [isOpen, preselectedCustomerId, preselectedOrderId, customers]);
 
   // Real-time duplicate check when reference changes
   useEffect(() => {
@@ -235,8 +260,11 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             <select
               value={selectedCustomerId}
               onChange={(e) => {
-                setSelectedCustomerId(e.target.value);
+                const newCustId = e.target.value;
+                setSelectedCustomerId(newCustId);
                 setSelectedOrderId('');
+                const bal = getCustomerBalance(newCustId);
+                setAmount(bal.outstandingBalance);
               }}
               required
               className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
@@ -267,9 +295,22 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               </label>
               <select
                 value={selectedOrderId}
-                onChange={(e) => setSelectedOrderId(e.target.value)}
+                onChange={(e) => {
+                  const newOrderId = e.target.value;
+                  setSelectedOrderId(newOrderId);
+                  if (newOrderId) {
+                    setAmount(getOrderOutstandingAmount(newOrderId));
+                  } else {
+                    setAmount(customerBalance.outstandingBalance);
+                  }
+                }}
                 className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100 font-mono"
               >
+                <option value="">
+                  {language === 'am'
+                    ? `አጠቃላይ የደንበኛ ዕዳ ክፍያ (${formatCurrency(customerBalance.outstandingBalance)})`
+                    : `General Customer Debt (${formatCurrency(customerBalance.outstandingBalance)})`}
+                </option>
                 {customerOrdersWithDebt.map((item) => (
                   <option key={item.order.id} value={item.order.id}>
                     {item.order.orderNumber} ({new Date(item.order.orderDate).toLocaleDateString()}) — Due: {formatCurrency(item.outstanding)}
