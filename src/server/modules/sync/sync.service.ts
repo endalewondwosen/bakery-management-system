@@ -15,16 +15,65 @@ import * as orderService from '../order/order.service.ts';
 import * as paymentService from '../payment/payment.service.ts';
 import * as expenseService from '../expense/expense.service.ts';
 import * as complaintService from '../complaint/complaint.service.ts';
+import { recordTombstone, getAllDeletedEntityIds } from '../../common/tombstones.ts';
 import type { SyncPayloadDto, SyncResponseDto } from '../../../types/apiContracts.ts';
 
 export async function processSync(payload: SyncPayloadDto): Promise<SyncResponseDto> {
   const now = new Date().toISOString();
 
+  // 0. Ingest any deletions reported by the client
+  if (payload.deletedIds) {
+    if (payload.deletedIds.customers && Array.isArray(payload.deletedIds.customers)) {
+      for (const id of payload.deletedIds.customers) {
+        await customerService.deleteCustomer(id);
+      }
+    }
+    if (payload.deletedIds.orders && Array.isArray(payload.deletedIds.orders)) {
+      for (const id of payload.deletedIds.orders) {
+        await orderService.deleteOrder(id);
+      }
+    }
+    if (payload.deletedIds.expenses && Array.isArray(payload.deletedIds.expenses)) {
+      for (const id of payload.deletedIds.expenses) {
+        await expenseService.deleteExpense(id);
+      }
+    }
+    if (payload.deletedIds.complaints && Array.isArray(payload.deletedIds.complaints)) {
+      for (const id of payload.deletedIds.complaints) {
+        await complaintService.deleteComplaint(id);
+      }
+    }
+    if (payload.deletedIds.products && Array.isArray(payload.deletedIds.products)) {
+      for (const id of payload.deletedIds.products) {
+        await productService.deleteProduct(id);
+      }
+    }
+    if (payload.deletedIds.pricingAgreements && Array.isArray(payload.deletedIds.pricingAgreements)) {
+      for (const id of payload.deletedIds.pricingAgreements) {
+        await productService.deletePricingAgreement(id);
+      }
+    }
+  }
+
+  // Load canonical tombstones to protect against zombie resurrection
+  const tombstones = await getAllDeletedEntityIds();
+  const deletedCustomerIds = new Set(tombstones.customers);
+  const deletedOrderIds = new Set(tombstones.orders);
+  const deletedExpenseIds = new Set(tombstones.expenses);
+  const deletedComplaintIds = new Set(tombstones.complaints);
+  const deletedProductIds = new Set(tombstones.products);
+  const deletedAgreementIds = new Set(tombstones.pricingAgreements);
+
   // 1. Process incoming customer updates / creations
   if (payload.customers && Array.isArray(payload.customers)) {
     for (const c of payload.customers) {
+      // If customer has been explicitly deleted, NEVER resurrect
+      if (deletedCustomerIds.has(c.id)) {
+        continue;
+      }
+
       let [existing] = await db.select().from(schema.customers).where(eq(schema.customers.id, c.id));
-      if (!existing && c.phone) {
+      if (!existing && c.phone && c.phone !== '-') {
         const matches = await db.select().from(schema.customers).where(eq(schema.customers.phone, c.phone.trim()));
         const cleanOrg = (c.organizationName || '').trim().toLowerCase();
         existing = matches.find((m) => m.organizationName.trim().toLowerCase() === cleanOrg) as typeof existing;
@@ -72,6 +121,9 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 2. Process incoming pricing agreements
   if (payload.pricingAgreements && Array.isArray(payload.pricingAgreements)) {
     for (const a of payload.pricingAgreements) {
+      if (deletedAgreementIds.has(a.id) || deletedCustomerIds.has(a.customerId) || deletedProductIds.has(a.productId)) {
+        continue;
+      }
       let [existing] = await db.select().from(schema.pricingAgreements).where(eq(schema.pricingAgreements.id, a.id));
       if (!existing) {
         const matches = await db.select().from(schema.pricingAgreements).where(eq(schema.pricingAgreements.customerId, a.customerId));
@@ -104,6 +156,9 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 3. Process incoming orders
   if (payload.orders && Array.isArray(payload.orders)) {
     for (const o of payload.orders) {
+      if (deletedOrderIds.has(o.id) || deletedCustomerIds.has(o.customerId)) {
+        continue;
+      }
       let [existing] = await db.select().from(schema.orders).where(eq(schema.orders.id, o.id));
       if (!existing && o.orderNumber) {
         const [byNum] = await db.select().from(schema.orders).where(eq(schema.orders.orderNumber, o.orderNumber.trim()));
@@ -154,6 +209,9 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 4. Process incoming order items
   if (payload.orderItems && Array.isArray(payload.orderItems)) {
     for (const item of payload.orderItems) {
+      if (deletedOrderIds.has(item.orderId)) {
+        continue;
+      }
       let [existing] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.id, item.id));
       if (!existing) {
         const matches = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, item.orderId));
@@ -178,6 +236,9 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 5. Process incoming payments
   if (payload.payments && Array.isArray(payload.payments)) {
     for (const p of payload.payments) {
+      if (deletedCustomerIds.has(p.customerId) || (p.orderId && deletedOrderIds.has(p.orderId))) {
+        continue;
+      }
       let [existing] = await db.select().from(schema.payments).where(eq(schema.payments.id, p.id));
       if (!existing && p.receiptNumber) {
         const [byRec] = await db.select().from(schema.payments).where(eq(schema.payments.receiptNumber, p.receiptNumber.trim()));
@@ -218,6 +279,9 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 6. Process incoming expenses
   if (payload.expenses && Array.isArray(payload.expenses)) {
     for (const e of payload.expenses) {
+      if (deletedExpenseIds.has(e.id)) {
+        continue;
+      }
       const [existing] = await db.select().from(schema.expenses).where(eq(schema.expenses.id, e.id));
       if (!existing) {
         await db.insert(schema.expenses).values({
@@ -242,6 +306,9 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   // 7. Process incoming complaints
   if (payload.complaints && Array.isArray(payload.complaints)) {
     for (const c of payload.complaints) {
+      if (deletedComplaintIds.has(c.id) || deletedCustomerIds.has(c.customerId)) {
+        continue;
+      }
       let [existing] = await db.select().from(schema.complaints).where(eq(schema.complaints.id, c.id));
       if (!existing && c.complaintNumber) {
         const [byNum] = await db.select().from(schema.complaints).where(eq(schema.complaints.complaintNumber, c.complaintNumber.trim()));
@@ -306,5 +373,6 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
     payments,
     expenses,
     complaints,
+    deletedIds: tombstones as any,
   };
 }

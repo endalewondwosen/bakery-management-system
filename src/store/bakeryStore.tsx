@@ -186,6 +186,72 @@ interface BakeryStoreContextType {
 const BakeryStoreContext = createContext<BakeryStoreContextType | undefined>(undefined);
 
 const STORAGE_KEY_PREFIX = 'bakery_v2_';
+const DELETED_IDS_STORAGE_KEY = `${STORAGE_KEY_PREFIX}deleted_entity_ids_v1`;
+
+interface LocalDeletedMap {
+  customers: string[];
+  orders: string[];
+  expenses: string[];
+  complaints: string[];
+  products: string[];
+  pricingAgreements: string[];
+}
+
+export function getLocalDeletedIds(): LocalDeletedMap {
+  if (typeof window === 'undefined') {
+    return { customers: [], orders: [], expenses: [], complaints: [], products: [], pricingAgreements: [] };
+  }
+  try {
+    const raw = localStorage.getItem(DELETED_IDS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : { customers: [], orders: [], expenses: [], complaints: [], products: [], pricingAgreements: [] };
+  } catch {
+    return { customers: [], orders: [], expenses: [], complaints: [], products: [], pricingAgreements: [] };
+  }
+}
+
+export function recordLocalDeletedId(
+  type: keyof LocalDeletedMap,
+  id: string
+) {
+  if (typeof window === 'undefined' || !id) return;
+  try {
+    const cur = getLocalDeletedIds();
+    if (!cur[type]) cur[type] = [];
+    if (!cur[type].includes(id)) {
+      cur[type].push(id);
+      localStorage.setItem(DELETED_IDS_STORAGE_KEY, JSON.stringify(cur));
+    }
+  } catch (e) {
+    console.error('Failed to record local deleted ID:', e);
+  }
+}
+
+export function mergeRemoteDeletedIds(
+  remoteDeleted?: Partial<Record<keyof LocalDeletedMap, string[]>>
+) {
+  if (typeof window === 'undefined' || !remoteDeleted) return;
+  try {
+    const cur = getLocalDeletedIds();
+    let changed = false;
+    const keys: (keyof LocalDeletedMap)[] = ['customers', 'orders', 'expenses', 'complaints', 'products', 'pricingAgreements'];
+    for (const key of keys) {
+      if (remoteDeleted[key] && Array.isArray(remoteDeleted[key])) {
+        if (!cur[key]) cur[key] = [];
+        for (const id of remoteDeleted[key]!) {
+          if (!cur[key].includes(id)) {
+            cur[key].push(id);
+            changed = true;
+          }
+        }
+      }
+    }
+    if (changed) {
+      localStorage.setItem(DELETED_IDS_STORAGE_KEY, JSON.stringify(cur));
+    }
+  } catch (e) {
+    console.error('Failed to merge remote deleted IDs:', e);
+  }
+}
 
 // Purge legacy mock cache from browser localStorage on startup
 if (typeof window !== 'undefined') {
@@ -281,43 +347,62 @@ function dedupeComplaints(list: Complaint[]): Complaint[] {
 
 export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [customers, setCustomers] = useState<Customer[]>(() => {
+    const deletedCust = new Set(getLocalDeletedIds().customers);
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}customers`);
-    return saved ? dedupeCustomers(JSON.parse(saved)) : initialCustomers;
+    const list = saved ? dedupeCustomers(JSON.parse(saved)) : initialCustomers;
+    return list.filter(c => !deletedCust.has(c.id));
   });
 
   const [pricingAgreements, setPricingAgreements] = useState<CustomerPricingAgreement[]>(() => {
+    const deletedAgr = new Set(getLocalDeletedIds().pricingAgreements);
+    const deletedCust = new Set(getLocalDeletedIds().customers);
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}pricing_agreements`);
-    return saved ? JSON.parse(saved) : initialPricingAgreements;
+    const list = saved ? JSON.parse(saved) : initialPricingAgreements;
+    return list.filter((pa: CustomerPricingAgreement) => !deletedAgr.has(pa.id) && !deletedCust.has(pa.customerId));
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
+    const deletedProd = new Set(getLocalDeletedIds().products);
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}products`);
-    return saved ? JSON.parse(saved) : initialProducts;
+    const list = saved ? JSON.parse(saved) : initialProducts;
+    return list.filter((p: Product) => !deletedProd.has(p.id));
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
+    const deletedOrd = new Set(getLocalDeletedIds().orders);
+    const deletedCust = new Set(getLocalDeletedIds().customers);
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}orders`);
-    return saved ? dedupeOrders(JSON.parse(saved)) : initialOrders;
+    const list = saved ? dedupeOrders(JSON.parse(saved)) : initialOrders;
+    return list.filter(o => !deletedOrd.has(o.id) && !deletedCust.has(o.customerId));
   });
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>(() => {
+    const deletedOrd = new Set(getLocalDeletedIds().orders);
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}order_items`);
-    return saved ? JSON.parse(saved) : initialOrderItems;
+    const list = saved ? JSON.parse(saved) : initialOrderItems;
+    return list.filter((i: OrderItem) => !deletedOrd.has(i.orderId));
   });
 
   const [payments, setPayments] = useState<Payment[]>(() => {
+    const deletedCust = new Set(getLocalDeletedIds().customers);
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}payments`);
-    return saved ? dedupePayments(JSON.parse(saved)) : initialPayments;
+    const list = saved ? dedupePayments(JSON.parse(saved)) : initialPayments;
+    return list.filter(p => !deletedCust.has(p.customerId));
   });
 
   const [expenses, setExpenses] = useState<Expense[]>(() => {
+    const deletedExp = new Set(getLocalDeletedIds().expenses);
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}expenses`);
-    return saved ? JSON.parse(saved) : initialExpenses;
+    const list = saved ? JSON.parse(saved) : initialExpenses;
+    return list.filter((e: Expense) => !deletedExp.has(e.id));
   });
 
   const [complaints, setComplaints] = useState<Complaint[]>(() => {
+    const deletedComp = new Set(getLocalDeletedIds().complaints);
+    const deletedCust = new Set(getLocalDeletedIds().customers);
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}complaints`);
-    return saved ? dedupeComplaints(JSON.parse(saved)) : initialComplaints;
+    const list = saved ? dedupeComplaints(JSON.parse(saved)) : initialComplaints;
+    return list.filter(c => !deletedComp.has(c.id) && !deletedCust.has(c.customerId));
   });
 
   // Offline & Sync States
@@ -340,6 +425,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // without re-triggering the initial mount synchronization effect.
   const stateRef = useRef({
     customers,
+    products,
     orders,
     orderItems,
     payments,
@@ -351,6 +437,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     stateRef.current = {
       customers,
+      products,
       orders,
       orderItems,
       payments,
@@ -358,7 +445,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       complaints,
       pricingAgreements,
     };
-  }, [customers, orders, orderItems, payments, expenses, complaints, pricingAgreements]);
+  }, [customers, products, orders, orderItems, payments, expenses, complaints, pricingAgreements]);
 
   const isSyncingRef = useRef<boolean>(false);
 
@@ -376,17 +463,38 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       // Step 2: Fetch and merge full server state
       const current = stateRef.current;
+      const localDeleted = getLocalDeletedIds();
+      const deletedCust = new Set(localDeleted.customers);
+      const deletedOrd = new Set(localDeleted.orders);
+      const deletedExp = new Set(localDeleted.expenses);
+      const deletedComp = new Set(localDeleted.complaints);
+      const deletedProd = new Set(localDeleted.products);
+      const deletedAgr = new Set(localDeleted.pricingAgreements);
+
       const data = await syncApi.syncAll({
-        customers: current.customers,
-        orders: current.orders,
-        orderItems: current.orderItems,
-        payments: current.payments,
-        expenses: current.expenses,
-        complaints: current.complaints,
-        pricingAgreements: current.pricingAgreements,
+        customers: current.customers.filter(c => !deletedCust.has(c.id)),
+        orders: current.orders.filter(o => !deletedOrd.has(o.id) && !deletedCust.has(o.customerId)),
+        orderItems: current.orderItems.filter(i => !deletedOrd.has(i.orderId)),
+        payments: current.payments.filter(p => !deletedCust.has(p.customerId) && (!p.orderId || !deletedOrd.has(p.orderId))),
+        expenses: current.expenses.filter(e => !deletedExp.has(e.id)),
+        complaints: current.complaints.filter(c => !deletedComp.has(c.id) && !deletedCust.has(c.customerId)),
+        pricingAgreements: current.pricingAgreements.filter(pa => !deletedAgr.has(pa.id) && !deletedCust.has(pa.customerId) && !deletedProd.has(pa.productId)),
+        deletedIds: localDeleted,
       });
 
       setIsOnline(true);
+
+      if (data && data.deletedIds) {
+        mergeRemoteDeletedIds(data.deletedIds);
+      }
+
+      const activeDeleted = getLocalDeletedIds();
+      const allDeletedCust = new Set(activeDeleted.customers);
+      const allDeletedOrd = new Set(activeDeleted.orders);
+      const allDeletedExp = new Set(activeDeleted.expenses);
+      const allDeletedComp = new Set(activeDeleted.complaints);
+      const allDeletedProd = new Set(activeDeleted.products);
+      const allDeletedAgr = new Set(activeDeleted.pricingAgreements);
 
       if (data && data.syncedAt) {
         setLastSyncedAt(data.syncedAt);
@@ -394,17 +502,26 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
       if (data && data.customers && Array.isArray(data.customers)) {
         setCustomers((prev) => {
-          const merged = dedupeCustomers([...prev, ...data.customers]);
+          const serverClean = data.customers.filter(c => !allDeletedCust.has(c.id));
+          const serverIds = new Set(serverClean.map(c => c.id));
+          const unSyncedLocal = prev.filter(c => !serverIds.has(c.id) && !allDeletedCust.has(c.id));
+          const merged = dedupeCustomers([...serverClean, ...unSyncedLocal]);
           return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
         });
       }
       if (data && data.products && Array.isArray(data.products)) {
-        setProducts((prev) => (JSON.stringify(prev) === JSON.stringify(data.products) ? prev : data.products));
+        setProducts((prev) => {
+          const serverClean = data.products.filter(p => !allDeletedProd.has(p.id));
+          return JSON.stringify(prev) === JSON.stringify(serverClean) ? prev : serverClean;
+        });
       }
       if (data && data.pricingAgreements && Array.isArray(data.pricingAgreements)) {
         setPricingAgreements((prev) => {
+          const serverClean = data.pricingAgreements.filter(pa => !allDeletedAgr.has(pa.id) && !allDeletedCust.has(pa.customerId) && !allDeletedProd.has(pa.productId));
+          const serverKeys = new Set(serverClean.map(pa => `${pa.customerId}_${pa.productId}`));
+          const unSyncedLocal = prev.filter(pa => !serverKeys.has(`${pa.customerId}_${pa.productId}`) && !allDeletedAgr.has(pa.id) && !allDeletedCust.has(pa.customerId));
           const seen = new Set<string>();
-          const combined = [...prev, ...data.pricingAgreements].filter((pa) => {
+          const combined = [...serverClean, ...unSyncedLocal].filter((pa) => {
             const key = `${pa.customerId}_${pa.productId}`;
             if (seen.has(key)) return false;
             seen.add(key);
@@ -415,14 +532,20 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
       if (data && data.orders && Array.isArray(data.orders)) {
         setOrders((prev) => {
-          const merged = dedupeOrders([...prev, ...data.orders]);
+          const serverClean = data.orders.filter(o => !allDeletedOrd.has(o.id) && !allDeletedCust.has(o.customerId));
+          const serverIds = new Set(serverClean.map(o => o.id));
+          const unSyncedLocal = prev.filter(o => !serverIds.has(o.id) && !allDeletedOrd.has(o.id) && !allDeletedCust.has(o.customerId));
+          const merged = dedupeOrders([...serverClean, ...unSyncedLocal]);
           return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
         });
       }
       if (data && data.orderItems && Array.isArray(data.orderItems)) {
         setOrderItems((prev) => {
+          const serverClean = data.orderItems.filter(i => !allDeletedOrd.has(i.orderId));
+          const serverIds = new Set(serverClean.map(i => i.id));
+          const unSyncedLocal = prev.filter(i => !serverIds.has(i.id) && !allDeletedOrd.has(i.orderId));
           const seen = new Set<string>();
-          const combined = [...prev, ...data.orderItems].filter((i) => {
+          const combined = [...serverClean, ...unSyncedLocal].filter((i) => {
             if (seen.has(i.id)) return false;
             seen.add(i.id);
             return true;
@@ -432,14 +555,20 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
       if (data && data.payments && Array.isArray(data.payments)) {
         setPayments((prev) => {
-          const merged = dedupePayments([...prev, ...data.payments]);
+          const serverClean = data.payments.filter(p => !allDeletedCust.has(p.customerId) && (!p.orderId || !allDeletedOrd.has(p.orderId)));
+          const serverIds = new Set(serverClean.map(p => p.id));
+          const unSyncedLocal = prev.filter(p => !serverIds.has(p.id) && !allDeletedCust.has(p.customerId));
+          const merged = dedupePayments([...serverClean, ...unSyncedLocal]);
           return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
         });
       }
       if (data && data.expenses && Array.isArray(data.expenses)) {
         setExpenses((prev) => {
+          const serverClean = data.expenses.filter(e => !allDeletedExp.has(e.id));
+          const serverIds = new Set(serverClean.map(e => e.id));
+          const unSyncedLocal = prev.filter(e => !serverIds.has(e.id) && !allDeletedExp.has(e.id));
           const seen = new Set<string>();
-          const combined = [...prev, ...data.expenses].filter((e) => {
+          const combined = [...serverClean, ...unSyncedLocal].filter((e) => {
             if (seen.has(e.id)) return false;
             seen.add(e.id);
             return true;
@@ -449,7 +578,10 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
       if (data && data.complaints && Array.isArray(data.complaints)) {
         setComplaints((prev) => {
-          const merged = dedupeComplaints([...prev, ...data.complaints]);
+          const serverClean = data.complaints.filter(c => !allDeletedComp.has(c.id) && !allDeletedCust.has(c.customerId));
+          const serverIds = new Set(serverClean.map(c => c.id));
+          const unSyncedLocal = prev.filter(c => !serverIds.has(c.id) && !allDeletedComp.has(c.id) && !allDeletedCust.has(c.customerId));
+          const merged = dedupeComplaints([...serverClean, ...unSyncedLocal]);
           return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
         });
       }
@@ -938,9 +1070,25 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const deleteOrder = (orderId: string) => {
-    setOrders(prev => prev.filter(o => o.id !== orderId));
-    setOrderItems(prev => prev.filter(it => it.orderId !== orderId));
-    setPayments(prev => prev.filter(p => p.orderId !== orderId));
+    recordLocalDeletedId('orders', orderId);
+    stateRef.current.orders = stateRef.current.orders.filter(o => o.id !== orderId);
+    stateRef.current.orderItems = stateRef.current.orderItems.filter(it => it.orderId !== orderId);
+
+    setOrders(prev => {
+      const next = prev.filter(o => o.id !== orderId);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}orders`, JSON.stringify(next));
+      return next;
+    });
+    setOrderItems(prev => {
+      const next = prev.filter(it => it.orderId !== orderId);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}order_items`, JSON.stringify(next));
+      return next;
+    });
+    setPayments(prev => {
+      const next = prev.filter(p => p.orderId !== orderId);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}payments`, JSON.stringify(next));
+      return next;
+    });
 
     enqueueMutation({
       endpoint: `/api/orders/${orderId}`,
@@ -1113,7 +1261,14 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const deleteExpense = (id: string) => {
-    setExpenses(prev => prev.filter(e => e.id !== id));
+    recordLocalDeletedId('expenses', id);
+    stateRef.current.expenses = stateRef.current.expenses.filter(e => e.id !== id);
+
+    setExpenses(prev => {
+      const next = prev.filter(e => e.id !== id);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}expenses`, JSON.stringify(next));
+      return next;
+    });
 
     enqueueMutation({
       endpoint: `/api/expenses/${id}`,
@@ -1200,9 +1355,30 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const deleteCustomer = (id: string) => {
-    setCustomers(prev => prev.filter(c => c.id !== id));
-    setPricingAgreements(prev => prev.filter(pa => pa.customerId !== id));
-    setComplaints(prev => prev.filter(c => c.customerId !== id));
+    // 1. Mark customer as permanently deleted locally
+    recordLocalDeletedId('customers', id);
+
+    // 2. Synchronously purge from stateRef so subsequent syncWithServer never pushes this customer
+    stateRef.current.customers = stateRef.current.customers.filter(c => c.id !== id);
+    stateRef.current.pricingAgreements = stateRef.current.pricingAgreements.filter(pa => pa.customerId !== id);
+    stateRef.current.complaints = stateRef.current.complaints.filter(c => c.customerId !== id);
+
+    // 3. Update React states & localStorage
+    setCustomers(prev => {
+      const next = prev.filter(c => c.id !== id);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}customers`, JSON.stringify(next));
+      return next;
+    });
+    setPricingAgreements(prev => {
+      const next = prev.filter(pa => pa.customerId !== id);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}pricing_agreements`, JSON.stringify(next));
+      return next;
+    });
+    setComplaints(prev => {
+      const next = prev.filter(c => c.customerId !== id);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}complaints`, JSON.stringify(next));
+      return next;
+    });
 
     enqueueMutation({
       endpoint: `/api/customers/${id}`,
@@ -1261,7 +1437,14 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const deletePricingAgreement = (id: string) => {
-    setPricingAgreements(prev => prev.filter(pa => pa.id !== id));
+    recordLocalDeletedId('pricingAgreements', id);
+    stateRef.current.pricingAgreements = stateRef.current.pricingAgreements.filter(pa => pa.id !== id);
+
+    setPricingAgreements(prev => {
+      const next = prev.filter(pa => pa.id !== id);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}pricing_agreements`, JSON.stringify(next));
+      return next;
+    });
 
     enqueueMutation({
       endpoint: `/api/pricing-agreements/${id}`,
@@ -1318,8 +1501,20 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const deleteProduct = (id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
-    setPricingAgreements(prev => prev.filter(pa => pa.productId !== id));
+    recordLocalDeletedId('products', id);
+    stateRef.current.products = stateRef.current.products.filter(p => p.id !== id);
+    stateRef.current.pricingAgreements = stateRef.current.pricingAgreements.filter(pa => pa.productId !== id);
+
+    setProducts(prev => {
+      const next = prev.filter(p => p.id !== id);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}products`, JSON.stringify(next));
+      return next;
+    });
+    setPricingAgreements(prev => {
+      const next = prev.filter(pa => pa.productId !== id);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}pricing_agreements`, JSON.stringify(next));
+      return next;
+    });
 
     enqueueMutation({
       endpoint: `/api/products/${id}`,
@@ -1456,7 +1651,14 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const deleteComplaint = (id: string) => {
-    setComplaints(prev => prev.filter(c => c.id !== id));
+    recordLocalDeletedId('complaints', id);
+    stateRef.current.complaints = stateRef.current.complaints.filter(c => c.id !== id);
+
+    setComplaints(prev => {
+      const next = prev.filter(c => c.id !== id);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}complaints`, JSON.stringify(next));
+      return next;
+    });
 
     enqueueMutation({
       endpoint: `/api/complaints/${id}`,

@@ -288,3 +288,16 @@ export const sessionRelations = relations(userSessions, ({ one }) => ({
   }),
 }));
 
+// ============================================================================
+// 12. DELETED RECORDS TABLE (Tombstone Tracking for Distributed Sync)
+// ============================================================================
+export const deletedRecords = sqliteTable('deleted_records', {
+  id: text('id').primaryKey(),
+  entityType: text('entity_type').notNull(), // CUSTOMER, ORDER, EXPENSE, COMPLAINT, PRODUCT, PRICING_AGREEMENT
+  entityId: text('entity_id').notNull(),
+  deletedAt: text('deleted_at').notNull(),
+}, (table) => [
+  index('idx_deleted_type_id').on(table.entityType, table.entityId),
+  index('idx_deleted_at').on(table.deletedAt),
+]);
+

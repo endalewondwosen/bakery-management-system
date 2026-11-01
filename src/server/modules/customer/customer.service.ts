@@ -9,6 +9,7 @@
 import { db } from '../../db/index.ts';
 import * as schema from '../../db/schema.ts';
 import { eq, desc } from 'drizzle-orm';
+import { recordTombstone } from '../../common/tombstones.ts';
 import type { Customer, CustomerStatementEntry } from '../../../types/domain.ts';
 import type { CreateCustomerDto, UpdateCustomerDto, CustomerStatementResponseDto } from '../../../types/apiContracts.ts';
 
@@ -214,10 +215,14 @@ export async function deleteCustomer(id: string): Promise<boolean> {
   const customerOrders = await db.select({ id: schema.orders.id }).from(schema.orders).where(eq(schema.orders.customerId, id));
   for (const o of customerOrders) {
     await db.delete(schema.orderItems).where(eq(schema.orderItems.orderId, o.id));
+    await recordTombstone('ORDER', o.id);
   }
   await db.delete(schema.orders).where(eq(schema.orders.customerId, id));
   await db.delete(schema.payments).where(eq(schema.payments.customerId, id));
   await db.delete(schema.customers).where(eq(schema.customers.id, id));
+
+  // Record tombstone so sync never resurrects this customer
+  await recordTombstone('CUSTOMER', id);
   return true;
 }
 

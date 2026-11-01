@@ -235,6 +235,17 @@ export interface ResolveComplaintDto {
 // ============================================================================
 // SYNC & ANALYTICS DTOs
 // ============================================================================
+export interface DeletedIdsMap {
+  customers?: string[];
+  products?: string[];
+  pricingAgreements?: string[];
+  orders?: string[];
+  orderItems?: string[];
+  payments?: string[];
+  expenses?: string[];
+  complaints?: string[];
+}
+
 export interface SyncPayloadDto {
   customers?: Customer[];
   products?: Product[];
@@ -244,6 +255,7 @@ export interface SyncPayloadDto {
   payments?: Payment[];
   expenses?: Expense[];
   complaints?: Complaint[];
+  deletedIds?: DeletedIdsMap;
 }
 
 export interface SyncResponseDto {
@@ -256,6 +268,14 @@ export interface SyncResponseDto {
   payments: Payment[];
   expenses: Expense[];
   complaints: Complaint[];
+  deletedIds: {
+    customers: string[];
+    products: string[];
+    pricingAgreements: string[];
+    orders: string[];
+    expenses: string[];
+    complaints: string[];
+  };
 }
 
 export interface DashboardMetricsDto {

@@ -9,6 +9,7 @@
 import { db } from '../../db/index.ts';
 import * as schema from '../../db/schema.ts';
 import { eq, and } from 'drizzle-orm';
+import { recordTombstone } from '../../common/tombstones.ts';
 import type { Product, CustomerPricingAgreement } from '../../../types/domain.ts';
 import type { CreateProductDto, UpdateProductDto, SetPricingAgreementDto } from '../../../types/apiContracts.ts';
 
@@ -144,6 +145,7 @@ export async function deleteProduct(id: string): Promise<boolean> {
   // Clean up any pricing agreements referencing this product
   await db.delete(schema.pricingAgreements).where(eq(schema.pricingAgreements.productId, id));
   await db.delete(schema.products).where(eq(schema.products.id, id));
+  await recordTombstone('PRODUCT', id);
   return true;
 }
 
@@ -152,6 +154,7 @@ export async function deletePricingAgreement(id: string): Promise<boolean> {
   if (!existing) return false;
 
   await db.delete(schema.pricingAgreements).where(eq(schema.pricingAgreements.id, id));
+  await recordTombstone('PRICING_AGREEMENT', id);
   return true;
 }
 

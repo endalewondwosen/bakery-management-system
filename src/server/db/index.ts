@@ -256,5 +256,19 @@ export async function initializeDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON user_sessions(access_token);
     CREATE INDEX IF NOT EXISTS idx_sessions_refresh ON user_sessions(refresh_token);
   `);
+
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS deleted_records (
+      id TEXT PRIMARY KEY,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      deleted_at TEXT NOT NULL
+    );
+  `);
+
+  await client.execute(`
+    CREATE INDEX IF NOT EXISTS idx_deleted_type_id ON deleted_records(entity_type, entity_id);
+    CREATE INDEX IF NOT EXISTS idx_deleted_at ON deleted_records(deleted_at);
+  `);
 }
 

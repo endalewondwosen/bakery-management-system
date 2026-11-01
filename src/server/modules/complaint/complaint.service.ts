@@ -8,6 +8,7 @@
 import { db } from '../../db/index.ts';
 import * as schema from '../../db/schema.ts';
 import { eq, desc } from 'drizzle-orm';
+import { recordTombstone } from '../../common/tombstones.ts';
 import type { Complaint } from '../../../types/domain.ts';
 import type { CreateComplaintDto, ResolveComplaintDto, UpdateComplaintDto } from '../../../types/apiContracts.ts';
 
@@ -151,6 +152,7 @@ export async function deleteComplaint(id: string): Promise<boolean> {
   const existing = await getComplaintById(id);
   if (!existing) return false;
   await db.delete(schema.complaints).where(eq(schema.complaints.id, id));
+  await recordTombstone('COMPLAINT', id);
   return true;
 }
 

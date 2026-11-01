@@ -9,6 +9,7 @@
 import { db } from '../../db/index.ts';
 import * as schema from '../../db/schema.ts';
 import { desc, eq } from 'drizzle-orm';
+import { recordTombstone } from '../../common/tombstones.ts';
 import type { Expense } from '../../../types/domain.ts';
 import type { CreateExpenseDto, UpdateExpenseDto } from '../../../types/apiContracts.ts';
 
@@ -122,6 +123,7 @@ export async function deleteExpense(id: string): Promise<boolean> {
   const existing = await getExpenseById(id);
   if (!existing) return false;
   await db.delete(schema.expenses).where(eq(schema.expenses.id, id));
+  await recordTombstone('EXPENSE', id);
   return true;
 }
 

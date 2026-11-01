@@ -9,6 +9,7 @@
 import { db } from '../../db/index.ts';
 import * as schema from '../../db/schema.ts';
 import { eq, desc, and } from 'drizzle-orm';
+import { recordTombstone } from '../../common/tombstones.ts';
 import type { Order, OrderItem } from '../../../types/domain.ts';
 import type {
   CreateOrderDto,
@@ -256,6 +257,7 @@ export async function deleteOrder(id: string): Promise<boolean> {
   await db.delete(schema.orderItems).where(eq(schema.orderItems.orderId, id));
   await db.delete(schema.payments).where(eq(schema.payments.orderId, id));
   await db.delete(schema.orders).where(eq(schema.orders.id, id));
+  await recordTombstone('ORDER', id);
   return true;
 }
 
