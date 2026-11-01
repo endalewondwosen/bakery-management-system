@@ -143,14 +143,24 @@ export async function drainMutationQueue(): Promise<{
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store',
+        };
+        if (typeof window !== 'undefined') {
+          const token =
+            localStorage.getItem('bakery_access_token') ||
+            localStorage.getItem('yibeltal_auth_token');
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+        }
+
         const res = await fetch(url, {
           method: item.method,
           credentials: 'include',
           cache: 'no-store',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store',
-          },
+          headers,
           body: item.body ? JSON.stringify(item.body) : undefined,
           signal: controller.signal,
         });

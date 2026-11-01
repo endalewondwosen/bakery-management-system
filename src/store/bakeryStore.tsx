@@ -212,12 +212,20 @@ function dedupeCustomers(list: Customer[]): Customer[] {
   const result: Customer[] = [];
   for (const c of list) {
     if (!c || !c.id) continue;
-    const orgPhoneKey = `${(c.organizationName || '').trim().toLowerCase()}_${(c.phone || '').trim()}`;
-    if (seenId.has(c.id) || (c.phone && seenOrgPhone.has(orgPhoneKey))) {
+    if (seenId.has(c.id)) continue;
+
+    // Only deduplicate by phone if it is a real phone number (not placeholder '-' and has at least 9 digits)
+    const cleanPhone = (c.phone || '').replace(/[^\d]/g, '');
+    const cleanOrg = (c.organizationName || c.name || '').trim().toLowerCase();
+    const isRealPhone = cleanPhone.length >= 9;
+    const orgPhoneKey = isRealPhone && cleanOrg ? `${cleanOrg}_${cleanPhone}` : null;
+
+    if (orgPhoneKey && seenOrgPhone.has(orgPhoneKey)) {
       continue;
     }
+
     seenId.add(c.id);
-    if (c.phone) seenOrgPhone.add(orgPhoneKey);
+    if (orgPhoneKey) seenOrgPhone.add(orgPhoneKey);
     result.push(c);
   }
   return result;
@@ -385,32 +393,65 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         localStorage.setItem(`${STORAGE_KEY_PREFIX}last_synced_at`, data.syncedAt);
       }
       if (data && data.customers && Array.isArray(data.customers)) {
-        const deduped = dedupeCustomers(data.customers);
-        setCustomers((prev) => (JSON.stringify(prev) === JSON.stringify(deduped) ? prev : deduped));
+        setCustomers((prev) => {
+          const merged = dedupeCustomers([...prev, ...data.customers]);
+          return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
+        });
       }
       if (data && data.products && Array.isArray(data.products)) {
         setProducts((prev) => (JSON.stringify(prev) === JSON.stringify(data.products) ? prev : data.products));
       }
       if (data && data.pricingAgreements && Array.isArray(data.pricingAgreements)) {
-        setPricingAgreements((prev) => (JSON.stringify(prev) === JSON.stringify(data.pricingAgreements) ? prev : data.pricingAgreements));
+        setPricingAgreements((prev) => {
+          const seen = new Set<string>();
+          const combined = [...prev, ...data.pricingAgreements].filter((pa) => {
+            const key = `${pa.customerId}_${pa.productId}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          return JSON.stringify(prev) === JSON.stringify(combined) ? prev : combined;
+        });
       }
       if (data && data.orders && Array.isArray(data.orders)) {
-        const deduped = dedupeOrders(data.orders);
-        setOrders((prev) => (JSON.stringify(prev) === JSON.stringify(deduped) ? prev : deduped));
+        setOrders((prev) => {
+          const merged = dedupeOrders([...prev, ...data.orders]);
+          return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
+        });
       }
       if (data && data.orderItems && Array.isArray(data.orderItems)) {
-        setOrderItems((prev) => (JSON.stringify(prev) === JSON.stringify(data.orderItems) ? prev : data.orderItems));
+        setOrderItems((prev) => {
+          const seen = new Set<string>();
+          const combined = [...prev, ...data.orderItems].filter((i) => {
+            if (seen.has(i.id)) return false;
+            seen.add(i.id);
+            return true;
+          });
+          return JSON.stringify(prev) === JSON.stringify(combined) ? prev : combined;
+        });
       }
       if (data && data.payments && Array.isArray(data.payments)) {
-        const deduped = dedupePayments(data.payments);
-        setPayments((prev) => (JSON.stringify(prev) === JSON.stringify(deduped) ? prev : deduped));
+        setPayments((prev) => {
+          const merged = dedupePayments([...prev, ...data.payments]);
+          return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
+        });
       }
       if (data && data.expenses && Array.isArray(data.expenses)) {
-        setExpenses((prev) => (JSON.stringify(prev) === JSON.stringify(data.expenses) ? prev : data.expenses));
+        setExpenses((prev) => {
+          const seen = new Set<string>();
+          const combined = [...prev, ...data.expenses].filter((e) => {
+            if (seen.has(e.id)) return false;
+            seen.add(e.id);
+            return true;
+          });
+          return JSON.stringify(prev) === JSON.stringify(combined) ? prev : combined;
+        });
       }
       if (data && data.complaints && Array.isArray(data.complaints)) {
-        const deduped = dedupeComplaints(data.complaints);
-        setComplaints((prev) => (JSON.stringify(prev) === JSON.stringify(deduped) ? prev : deduped));
+        setComplaints((prev) => {
+          const merged = dedupeComplaints([...prev, ...data.complaints]);
+          return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
+        });
       }
     } catch (err: any) {
       // If network error occurred, mark offline status
