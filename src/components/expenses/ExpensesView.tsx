@@ -86,9 +86,9 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
       referenceNumber: editRef.trim() || undefined,
       notes: editNotes.trim() || undefined,
       expensePeriod: editPeriod,
-      unit: editUnit || undefined,
+      unit: editQty > 0 ? (editUnit && editUnit !== 'LUMP_SUM' ? editUnit : 'PIECE') : 'LUMP_SUM',
       quantity: editQty > 0 ? editQty : undefined,
-      unitPrice: editUnitPrice > 0 ? editUnitPrice : undefined,
+      unitPrice: editQty > 0 && editUnitPrice > 0 ? editUnitPrice : undefined,
     });
 
     showSuccess(
@@ -194,7 +194,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
 
   // Unit string formatter
   const renderUnitCalculation = (exp: typeof expenses[0]) => {
-    if (exp.quantity && exp.unitPrice) {
+    if (exp.quantity && exp.quantity > 0 && exp.unitPrice && exp.unitPrice > 0) {
       return (
         <span className="text-[11px] font-mono text-stone-300">
           <span className="font-bold text-amber-400">{exp.quantity}</span> {exp.unit}{' '}
@@ -202,10 +202,10 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
         </span>
       );
     }
-    if (exp.unit && exp.unit !== 'LUMP_SUM') {
+    if (exp.unit && exp.unit !== 'LUMP_SUM' && exp.quantity && exp.quantity > 0) {
       return (
         <span className="text-[11px] text-stone-400 font-mono">
-          {exp.quantity || 1} {exp.unit}
+          {exp.quantity} {exp.unit}
         </span>
       );
     }

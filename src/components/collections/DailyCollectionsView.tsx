@@ -21,7 +21,13 @@ export const DailyCollectionsView: React.FC = () => {
   const { t, formatCurrency, language } = useLanguage();
   const { payments, orders, expenses } = useBakeryStore();
 
-  const [selectedDate, setSelectedDate] = useState('2026-09-24');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
 
   // Filter verified payments for the chosen day
   const dayPayments = useMemo(() => {

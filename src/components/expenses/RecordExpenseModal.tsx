@@ -86,6 +86,15 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
       setCalculationMode('CALCULATE');
       setUnit('BUNDLE');
       setDescription(language === 'am' ? 'የዳቦ ማሸጊያ ፌስታል' : 'Plastic bread packaging');
+    } else if (newCat === 'MAINTENANCE') {
+      setExpensePeriod('DAILY');
+      setCalculationMode('FLAT');
+      setUnit('LUMP_SUM');
+      setDescription(language === 'am' ? 'የማሽነሪ ወይም የዳቦ ቤት ጥገና' : 'Machinery / bakery maintenance');
+    } else if (newCat === 'OTHER') {
+      setCalculationMode('FLAT');
+      setUnit('LUMP_SUM');
+      setDescription(language === 'am' ? 'ልዩ ልዩ ወጪ' : 'Miscellaneous expense');
     }
   };
 
@@ -125,9 +134,9 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
         notes: notes.trim() || undefined,
         recordedBy: 'Owner',
         expensePeriod,
-        unit,
-        quantity: calculationMode === 'CALCULATE' && typeof quantity === 'number' ? quantity : undefined,
-        unitPrice: calculationMode === 'CALCULATE' && typeof unitPrice === 'number' ? unitPrice : undefined,
+        unit: calculationMode === 'FLAT' ? 'LUMP_SUM' : unit,
+        quantity: calculationMode === 'CALCULATE' && typeof quantity === 'number' && quantity > 0 ? quantity : undefined,
+        unitPrice: calculationMode === 'CALCULATE' && typeof unitPrice === 'number' && unitPrice > 0 ? unitPrice : undefined,
       });
 
       showSuccess(
@@ -280,7 +289,12 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
               <div className="flex items-center gap-1 bg-stone-900 p-0.5 rounded-lg border border-stone-700/80">
                 <button
                   type="button"
-                  onClick={() => setCalculationMode('CALCULATE')}
+                  onClick={() => {
+                    setCalculationMode('CALCULATE');
+                    if (unit === 'LUMP_SUM') {
+                      setUnit(category === 'RAW_FLOUR' ? 'QUINTAL' : category === 'TRANSPORT_FUEL' ? 'LITER' : category === 'RAW_EGGS' ? 'CRATE' : 'PIECE');
+                    }
+                  }}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
                     calculationMode === 'CALCULATE'
                       ? 'bg-rose-600 text-white font-bold shadow'
@@ -291,7 +305,10 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCalculationMode('FLAT')}
+                  onClick={() => {
+                    setCalculationMode('FLAT');
+                    setUnit('LUMP_SUM');
+                  }}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
                     calculationMode === 'FLAT'
                       ? 'bg-rose-600 text-white font-bold shadow'
