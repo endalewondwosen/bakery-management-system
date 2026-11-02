@@ -20,6 +20,7 @@ export async function getAllProducts(): Promise<Product[]> {
     descriptionEn: r.descriptionEn ?? undefined,
     descriptionAm: r.descriptionAm ?? undefined,
     isActive: Boolean(r.isActive),
+    updatedAt: r.updatedAt ?? undefined,
   }));
 }
 
@@ -31,17 +32,19 @@ export async function getProductById(id: string): Promise<Product | null> {
     descriptionEn: row.descriptionEn ?? undefined,
     descriptionAm: row.descriptionAm ?? undefined,
     isActive: Boolean(row.isActive),
+    updatedAt: row.updatedAt ?? undefined,
   };
 }
 
 export async function createProduct(dto: CreateProductDto): Promise<Product> {
-  const now = new Date().toISOString();
+  const now = dto.updatedAt || new Date().toISOString();
   const id = `prod-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
   const newProduct: Product = {
     ...dto,
     id,
     createdAt: now,
+    updatedAt: now,
   };
 
   await db.insert(schema.products).values({
@@ -54,13 +57,15 @@ export async function createProduct(dto: CreateProductDto): Promise<Product> {
     category: newProduct.category,
     isActive: newProduct.isActive,
     createdAt: newProduct.createdAt,
+    updatedAt: now,
   });
 
   return newProduct;
 }
 
 export async function updateProduct(id: string, patch: UpdateProductDto): Promise<Product | null> {
-  const updateValues: Record<string, any> = {};
+  const now = patch.updatedAt || new Date().toISOString();
+  const updateValues: Record<string, any> = { updatedAt: now };
 
   if (patch.nameEn !== undefined) updateValues.nameEn = patch.nameEn;
   if (patch.nameAm !== undefined) updateValues.nameAm = patch.nameAm;
@@ -80,12 +85,14 @@ export async function getAllPricingAgreements(): Promise<CustomerPricingAgreemen
     ...r,
     notes: r.notes ?? undefined,
     isActive: Boolean(r.isActive),
+    updatedAt: r.updatedAt ?? undefined,
   }));
 }
 
 export async function setCustomerPricingAgreement(dto: SetPricingAgreementDto): Promise<CustomerPricingAgreement> {
   const { customerId, productId, agreedPrice, notes, effectiveDate, isActive } = dto;
-  const now = new Date().toISOString().slice(0, 10);
+  const now = dto.updatedAt || new Date().toISOString();
+  const effectiveDay = effectiveDate || now.slice(0, 10);
 
   const [existing] = await db
     .select()
@@ -97,9 +104,10 @@ export async function setCustomerPricingAgreement(dto: SetPricingAgreementDto): 
       .update(schema.pricingAgreements)
       .set({
         agreedPrice,
-        effectiveDate: effectiveDate || existing.effectiveDate,
+        effectiveDate: effectiveDay,
         isActive: isActive !== undefined ? isActive : existing.isActive,
         notes: notes !== undefined ? notes : existing.notes,
+        updatedAt: now,
       })
       .where(eq(schema.pricingAgreements.id, existing.id));
 
@@ -108,9 +116,10 @@ export async function setCustomerPricingAgreement(dto: SetPricingAgreementDto): 
       customerId,
       productId,
       agreedPrice,
-      effectiveDate: effectiveDate || existing.effectiveDate,
+      effectiveDate: effectiveDay,
       isActive: isActive !== undefined ? isActive : Boolean(existing.isActive),
       notes: notes !== undefined ? notes : (existing.notes ?? undefined),
+      updatedAt: now,
     };
   }
 
@@ -120,9 +129,10 @@ export async function setCustomerPricingAgreement(dto: SetPricingAgreementDto): 
     customerId,
     productId,
     agreedPrice,
-    effectiveDate: effectiveDate || now,
+    effectiveDate: effectiveDay,
     isActive: isActive !== undefined ? isActive : true,
     notes,
+    updatedAt: now,
   };
 
   await db.insert(schema.pricingAgreements).values({
@@ -133,6 +143,7 @@ export async function setCustomerPricingAgreement(dto: SetPricingAgreementDto): 
     effectiveDate: newAgreement.effectiveDate,
     isActive: newAgreement.isActive,
     notes: newAgreement.notes || null,
+    updatedAt: now,
   });
 
   return newAgreement;

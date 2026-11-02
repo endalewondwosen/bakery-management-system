@@ -65,6 +65,7 @@ export interface CustomerPricingAgreement {
   effectiveDate: string;
   isActive: boolean;
   notes?: string;
+  updatedAt?: string;
 }
 
 export interface Product {
@@ -77,6 +78,7 @@ export interface Product {
   category: string;
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type OrderSource = 'PHONE' | 'WALK_IN' | 'CUSTOMER_PORTAL' | 'TELEGRAM' | 'OTHER';

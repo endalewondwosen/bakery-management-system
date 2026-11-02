@@ -118,6 +118,52 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
     }
   }
 
+  // 1.5. Process incoming product updates / creations
+  if (payload.products && Array.isArray(payload.products)) {
+    for (const p of payload.products) {
+      if (deletedProductIds.has(p.id)) {
+        continue;
+      }
+      let [existing] = await db.select().from(schema.products).where(eq(schema.products.id, p.id));
+      if (!existing && p.nameEn) {
+        const matches = await db.select().from(schema.products).where(eq(schema.products.nameEn, p.nameEn.trim()));
+        existing = matches[0] as typeof existing;
+      }
+
+      if (!existing) {
+        await db.insert(schema.products).values({
+          id: p.id,
+          nameEn: p.nameEn,
+          nameAm: p.nameAm,
+          descriptionEn: p.descriptionEn || null,
+          descriptionAm: p.descriptionAm || null,
+          basePrice: p.basePrice,
+          category: p.category,
+          isActive: p.isActive,
+          createdAt: p.createdAt || now,
+          updatedAt: p.updatedAt || now,
+        });
+      } else if (
+        (p.updatedAt && (!existing.updatedAt || p.updatedAt > existing.updatedAt)) ||
+        (p.basePrice !== undefined && p.basePrice !== existing.basePrice)
+      ) {
+        await db
+          .update(schema.products)
+          .set({
+            nameEn: p.nameEn || existing.nameEn,
+            nameAm: p.nameAm || existing.nameAm,
+            descriptionEn: p.descriptionEn !== undefined ? (p.descriptionEn || null) : existing.descriptionEn,
+            descriptionAm: p.descriptionAm !== undefined ? (p.descriptionAm || null) : existing.descriptionAm,
+            basePrice: p.basePrice !== undefined ? p.basePrice : existing.basePrice,
+            category: p.category || existing.category,
+            isActive: p.isActive !== undefined ? p.isActive : existing.isActive,
+            updatedAt: p.updatedAt || now,
+          })
+          .where(eq(schema.products.id, existing.id));
+      }
+    }
+  }
+
   // 2. Process incoming pricing agreements
   if (payload.pricingAgreements && Array.isArray(payload.pricingAgreements)) {
     for (const a of payload.pricingAgreements) {
@@ -139,14 +185,20 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
           effectiveDate: a.effectiveDate || now.slice(0, 10),
           isActive: a.isActive,
           notes: a.notes || null,
+          updatedAt: a.updatedAt || now,
         });
-      } else {
+      } else if (
+        (a.updatedAt && (!existing.updatedAt || a.updatedAt > existing.updatedAt)) ||
+        (a.agreedPrice !== undefined && a.agreedPrice !== existing.agreedPrice)
+      ) {
         await db
           .update(schema.pricingAgreements)
           .set({
             agreedPrice: a.agreedPrice,
-            isActive: a.isActive,
-            notes: a.notes || null,
+            effectiveDate: a.effectiveDate || existing.effectiveDate,
+            isActive: a.isActive !== undefined ? a.isActive : existing.isActive,
+            notes: a.notes !== undefined ? a.notes : existing.notes,
+            updatedAt: a.updatedAt || now,
           })
           .where(eq(schema.pricingAgreements.id, existing.id));
       }

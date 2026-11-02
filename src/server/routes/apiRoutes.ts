@@ -63,15 +63,17 @@ apiRouter.get('/pricing-agreements', async (_req: Request, res: Response) => {
 
 apiRouter.post('/pricing-agreements', async (req: Request, res: Response) => {
   try {
-    const { customerId, productId, agreedPrice, notes } = req.body;
+    const { id, customerId, productId, agreedPrice, notes, updatedAt } = req.body;
     if (!customerId || !productId || agreedPrice === undefined) {
       return sendError(res, 'Missing required fields: customerId, productId, agreedPrice');
     }
     const agreement = await productService.setCustomerPricingAgreement({
+      id,
       customerId,
       productId,
       agreedPrice,
       notes,
+      updatedAt,
     });
     return sendSuccess(res, agreement, 'Pricing agreement saved');
   } catch (err: any) {

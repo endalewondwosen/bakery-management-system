@@ -90,9 +90,12 @@ export interface CreateProductDto {
   basePrice: number;
   category: string;
   isActive: boolean;
+  updatedAt?: string;
 }
 
-export interface UpdateProductDto extends Partial<CreateProductDto> {}
+export interface UpdateProductDto extends Partial<CreateProductDto> {
+  updatedAt?: string;
+}
 
 export interface SetPricingAgreementDto {
   id?: string;
@@ -102,6 +105,7 @@ export interface SetPricingAgreementDto {
   effectiveDate?: string;
   isActive?: boolean;
   notes?: string;
+  updatedAt?: string;
 }
 
 // ============================================================================

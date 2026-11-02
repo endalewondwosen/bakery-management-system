@@ -51,6 +51,7 @@ export const products = sqliteTable('products', {
   category: text('category').notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
   createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at'),
 }, (table) => [
   index('idx_products_category').on(table.category),
   index('idx_products_active').on(table.isActive),
@@ -67,6 +68,7 @@ export const pricingAgreements = sqliteTable('pricing_agreements', {
   effectiveDate: text('effective_date').notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
   notes: text('notes'),
+  updatedAt: text('updated_at'),
 }, (table) => [
   index('idx_agreements_customer').on(table.customerId),
   index('idx_agreements_product').on(table.productId),

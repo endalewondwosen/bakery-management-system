@@ -473,6 +473,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       const data = await syncApi.syncAll({
         customers: current.customers.filter(c => !deletedCust.has(c.id)),
+        products: current.products.filter(p => !deletedProd.has(p.id)),
         orders: current.orders.filter(o => !deletedOrd.has(o.id) && !deletedCust.has(o.customerId)),
         orderItems: current.orderItems.filter(i => !deletedOrd.has(i.orderId)),
         payments: current.payments.filter(p => !deletedCust.has(p.customerId) && (!p.orderId || !deletedOrd.has(p.orderId))),
@@ -512,22 +513,53 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (data && data.products && Array.isArray(data.products)) {
         setProducts((prev) => {
           const serverClean = data.products.filter(p => !allDeletedProd.has(p.id));
-          return JSON.stringify(prev) === JSON.stringify(serverClean) ? prev : serverClean;
+          const processedIds = new Set<string>();
+          const merged: Product[] = [];
+
+          for (const sProd of serverClean) {
+            processedIds.add(sProd.id);
+            const local = prev.find(p => p.id === sProd.id);
+            if (local && local.updatedAt && sProd.updatedAt && local.updatedAt > sProd.updatedAt) {
+              merged.push(local);
+            } else {
+              merged.push(sProd);
+            }
+          }
+
+          for (const lProd of prev) {
+            if (!processedIds.has(lProd.id) && !allDeletedProd.has(lProd.id)) {
+              merged.push(lProd);
+            }
+          }
+
+          return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
         });
       }
       if (data && data.pricingAgreements && Array.isArray(data.pricingAgreements)) {
         setPricingAgreements((prev) => {
           const serverClean = data.pricingAgreements.filter(pa => !allDeletedAgr.has(pa.id) && !allDeletedCust.has(pa.customerId) && !allDeletedProd.has(pa.productId));
-          const serverKeys = new Set(serverClean.map(pa => `${pa.customerId}_${pa.productId}`));
-          const unSyncedLocal = prev.filter(pa => !serverKeys.has(`${pa.customerId}_${pa.productId}`) && !allDeletedAgr.has(pa.id) && !allDeletedCust.has(pa.customerId));
-          const seen = new Set<string>();
-          const combined = [...serverClean, ...unSyncedLocal].filter((pa) => {
-            const key = `${pa.customerId}_${pa.productId}`;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          });
-          return JSON.stringify(prev) === JSON.stringify(combined) ? prev : combined;
+          const processedKeys = new Set<string>();
+          const merged: CustomerPricingAgreement[] = [];
+
+          for (const sAgr of serverClean) {
+            const key = `${sAgr.customerId}_${sAgr.productId}`;
+            processedKeys.add(key);
+            const local = prev.find(pa => `${pa.customerId}_${pa.productId}` === key);
+            if (local && local.updatedAt && sAgr.updatedAt && local.updatedAt > sAgr.updatedAt) {
+              merged.push(local);
+            } else {
+              merged.push(sAgr);
+            }
+          }
+
+          for (const lAgr of prev) {
+            const key = `${lAgr.customerId}_${lAgr.productId}`;
+            if (!processedKeys.has(key) && !allDeletedAgr.has(lAgr.id) && !allDeletedCust.has(lAgr.customerId)) {
+              merged.push(lAgr);
+            }
+          }
+
+          return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
         });
       }
       if (data && data.orders && Array.isArray(data.orders)) {
@@ -1397,39 +1429,49 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   ) => {
     const nowIso = new Date().toISOString();
     let agreementId = `cpa-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    setPricingAgreements(prev => {
-      const existingIndex = prev.findIndex(
-        pa => pa.customerId === customerId && pa.productId === productId
+
+    const existingIndex = stateRef.current.pricingAgreements.findIndex(
+      pa => pa.customerId === customerId && pa.productId === productId
+    );
+    let targetAgreement: CustomerPricingAgreement;
+    if (existingIndex >= 0) {
+      agreementId = stateRef.current.pricingAgreements[existingIndex].id;
+      targetAgreement = {
+        ...stateRef.current.pricingAgreements[existingIndex],
+        agreedPrice,
+        isActive: true,
+        notes: notes !== undefined ? notes : stateRef.current.pricingAgreements[existingIndex].notes,
+        effectiveDate: nowIso,
+        updatedAt: nowIso,
+      };
+      stateRef.current.pricingAgreements = stateRef.current.pricingAgreements.map(pa =>
+        pa.id === agreementId ? targetAgreement : pa
       );
-      if (existingIndex >= 0) {
-        agreementId = prev[existingIndex].id;
-        const updated = [...prev];
-        updated[existingIndex] = {
-          ...updated[existingIndex],
-          agreedPrice,
-          isActive: true,
-          notes: notes || updated[existingIndex].notes,
-          effectiveDate: nowIso
-        };
-        return updated;
-      } else {
-        const newAgreement: CustomerPricingAgreement = {
-          id: agreementId,
-          customerId,
-          productId,
-          agreedPrice,
-          effectiveDate: nowIso,
-          isActive: true,
-          notes
-        };
-        return [...prev, newAgreement];
-      }
+    } else {
+      targetAgreement = {
+        id: agreementId,
+        customerId,
+        productId,
+        agreedPrice,
+        effectiveDate: nowIso,
+        isActive: true,
+        notes,
+        updatedAt: nowIso,
+      };
+      stateRef.current.pricingAgreements = [...stateRef.current.pricingAgreements, targetAgreement];
+    }
+
+    setPricingAgreements(prev => {
+      const idx = prev.findIndex(pa => pa.customerId === customerId && pa.productId === productId);
+      const next = idx >= 0 ? prev.map((pa, i) => (i === idx ? targetAgreement : pa)) : [...prev, targetAgreement];
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}pricing_agreements`, JSON.stringify(next));
+      return next;
     });
 
     enqueueMutation({
       endpoint: '/api/pricing-agreements',
       method: 'POST',
-      body: { id: agreementId, customerId, productId, agreedPrice, notes },
+      body: { id: agreementId, customerId, productId, agreedPrice, notes, updatedAt: nowIso },
       description: `Agreed price ${agreedPrice} ETB for customer ${customerId}`,
     });
 
@@ -1461,9 +1503,15 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       ...productData,
       id: `prod-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       createdAt: nowIso,
+      updatedAt: nowIso,
     };
 
-    setProducts(prev => [...prev, newProduct]);
+    stateRef.current.products = [...stateRef.current.products, newProduct];
+    setProducts(prev => {
+      const next = [...prev, newProduct];
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}products`, JSON.stringify(next));
+      return next;
+    });
 
     enqueueMutation({
       endpoint: '/api/products',
@@ -1478,22 +1526,26 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const updateProduct = (id: string, productData: Partial<Product>) => {
-    setProducts(prev =>
-      prev.map(p => {
-        if (p.id === id) {
-          return {
-            ...p,
-            ...productData,
-          };
-        }
-        return p;
-      })
+    const nowIso = new Date().toISOString();
+    const updatePayload = {
+      ...productData,
+      updatedAt: nowIso,
+    };
+
+    stateRef.current.products = stateRef.current.products.map(p =>
+      p.id === id ? { ...p, ...updatePayload } : p
     );
+
+    setProducts(prev => {
+      const next = prev.map(p => (p.id === id ? { ...p, ...updatePayload } : p));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}products`, JSON.stringify(next));
+      return next;
+    });
 
     enqueueMutation({
       endpoint: `/api/products/${id}`,
       method: 'PUT',
-      body: productData,
+      body: updatePayload,
       description: `Update product ${id}`,
     });
 

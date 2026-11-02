@@ -270,5 +270,17 @@ export async function initializeDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_deleted_type_id ON deleted_records(entity_type, entity_id);
     CREATE INDEX IF NOT EXISTS idx_deleted_at ON deleted_records(deleted_at);
   `);
+
+  // Non-destructive column additions for existing SQLite databases
+  try {
+    await client.execute('ALTER TABLE products ADD COLUMN updated_at TEXT;');
+  } catch {
+    // Column already exists
+  }
+  try {
+    await client.execute('ALTER TABLE pricing_agreements ADD COLUMN updated_at TEXT;');
+  } catch {
+    // Column already exists
+  }
 }
 
