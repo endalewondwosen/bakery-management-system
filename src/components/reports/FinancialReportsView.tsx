@@ -268,7 +268,7 @@ export const FinancialReportsView: React.FC = () => {
             <span>Backup</span>
           </button>
 
-          <button
+          <button disabled
             onClick={() => {
               if (confirm(language === 'am' ? 'ሁሉንም ዳታ ወደ መጀመሪያው ሁኔታ መመለስ ይፈልጋሉ?' : 'Reset to original seed demo data?')) {
                 resetToInitialData();
@@ -277,7 +277,7 @@ export const FinancialReportsView: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-850 hover:bg-rose-950/60 text-stone-400 hover:text-rose-400 border border-stone-700 text-xs transition cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            // <span>{language === 'am' ? 'ዳታ አድስ' : 'Reset'}</span>
+            <span>{language === 'am' ? 'ዳታ አድስ' : 'Reset'}</span>
           </button>
         </div>
       </div>
