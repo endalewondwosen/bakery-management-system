@@ -10,7 +10,7 @@ import { db } from '../db/index.ts';
 import * as schema from '../db/schema.ts';
 import { eq, inArray } from 'drizzle-orm';
 
-export type TombstoneEntityType = 'CUSTOMER' | 'ORDER' | 'EXPENSE' | 'COMPLAINT' | 'PRODUCT' | 'PRICING_AGREEMENT';
+export type TombstoneEntityType = 'CUSTOMER' | 'ORDER' | 'EXPENSE' | 'EXPENSE_CATEGORY' | 'COMPLAINT' | 'PRODUCT' | 'PRICING_AGREEMENT';
 
 /**
  * Persists a deletion tombstone so any device attempting to sync this record will skip it.
@@ -61,6 +61,7 @@ export async function getAllDeletedEntityIds(): Promise<Record<string, string[]>
       customers: [],
       orders: [],
       expenses: [],
+      expenseCategories: [],
       complaints: [],
       products: [],
       pricingAgreements: [],
@@ -70,6 +71,7 @@ export async function getAllDeletedEntityIds(): Promise<Record<string, string[]>
       if (r.entityType === 'CUSTOMER') result.customers.push(r.entityId);
       else if (r.entityType === 'ORDER') result.orders.push(r.entityId);
       else if (r.entityType === 'EXPENSE') result.expenses.push(r.entityId);
+      else if (r.entityType === 'EXPENSE_CATEGORY') result.expenseCategories.push(r.entityId);
       else if (r.entityType === 'COMPLAINT') result.complaints.push(r.entityId);
       else if (r.entityType === 'PRODUCT') result.products.push(r.entityId);
       else if (r.entityType === 'PRICING_AGREEMENT') result.pricingAgreements.push(r.entityId);
@@ -82,6 +84,7 @@ export async function getAllDeletedEntityIds(): Promise<Record<string, string[]>
       customers: [],
       orders: [],
       expenses: [],
+      expenseCategories: [],
       complaints: [],
       products: [],
       pricingAgreements: [],

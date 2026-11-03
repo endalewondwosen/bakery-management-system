@@ -58,3 +58,43 @@ export async function deleteExpense(req: Request, res: Response) {
     return sendServerError(res, err);
   }
 }
+
+export async function getExpenseCategories(req: Request, res: Response) {
+  try {
+    const categories = await expenseService.getAllExpenseCategories();
+    return sendSuccess(res, categories);
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+
+export async function createExpenseCategory(req: Request, res: Response) {
+  try {
+    const { name, code, id, updatedAt } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return sendError(res, 'Category name is required');
+    }
+    const category = await expenseService.createExpenseCategory({
+      id,
+      name: name.trim(),
+      code,
+      updatedAt,
+    });
+    return sendCreated(res, category, 'Expense category created successfully');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}
+
+export async function deleteExpenseCategory(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const deleted = await expenseService.deleteExpenseCategory(id);
+    if (!deleted) {
+      return sendError(res, `Category could not be deleted (it may be a system category or does not exist)`, 400);
+    }
+    return sendSuccess(res, { id, deleted: true }, 'Expense category deleted');
+  } catch (err: any) {
+    return sendServerError(res, err);
+  }
+}

@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   X,
   Save,
+  Tag,
 } from 'lucide-react';
 import { Expense, ExpenseCategory, ExpensePeriod, PaymentMethod } from '../../types/domain.ts';
 import { useToast } from '../common/ToastContext.tsx';
@@ -33,11 +34,35 @@ interface ExpensesViewProps {
 export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense }) => {
   const { t, formatCurrency, language } = useLanguage();
   const { showSuccess } = useToast();
-  const { expenses, updateExpense, deleteExpense } = useBakeryStore();
+  const { expenses, updateExpense, deleteExpense, expenseCategories, addExpenseCategory, deleteExpenseCategory, getCategoryLabel } = useBakeryStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [periodFilter, setPeriodFilter] = useState<'ALL' | ExpensePeriod>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+
+  // Category Configuration Modal State
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  const handleCreateNewCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newCategoryName.trim();
+    if (!clean) return;
+    addExpenseCategory(clean);
+    setNewCategoryName('');
+    showSuccess(
+      language === 'am' ? 'ምድብ ተፈጥሯል' : 'Category Created',
+      language === 'am' ? `"${clean}" በተሳካ ሁኔታ ተፈጥሯል` : `"${clean}" category added successfully`
+    );
+  };
+
+  const handleDeleteCategory = (id: string, name: string) => {
+    deleteExpenseCategory(id);
+    showSuccess(
+      language === 'am' ? 'ምድብ ተሰርዟል' : 'Category Deleted',
+      language === 'am' ? `"${name}" ተሰርዟል` : `"${name}" removed`
+    );
+  };
 
   // Edit Expense State
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -232,7 +257,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-850 hover:bg-stone-800 text-stone-300 hover:text-white font-medium text-xs border border-stone-700 shadow-sm transition cursor-pointer"
+          >
+            <Tag className="w-3.5 h-3.5 text-amber-400" />
+            <span>{language === 'am' ? 'የወጪ ምድቦች' : 'Categories'}</span>
+          </button>
           <button
             onClick={() => onOpenRecordExpense('DAILY')}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow transition cursor-pointer"
@@ -382,17 +414,11 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
             className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-xs text-stone-100 focus:outline-none focus:border-rose-500"
           >
             <option value="ALL">{language === 'am' ? 'ሁሉም የወጪ ምድቦች' : 'All Categories'}</option>
-            <option value="RAW_FLOUR">{t.catRawFlour}</option>
-            <option value="RAW_EGGS">{t.catRawEggs}</option>
-            <option value="RAW_CHEESE_FETA">{t.catRawCheeseFeta}</option>
-            <option value="RAW_SUGAR_OIL">{t.catRawSugarOil}</option>
-            <option value="PACKAGING">{t.catPackaging}</option>
-            <option value="TRANSPORT_FUEL">{t.catTransportFuel}</option>
-            <option value="UTILITIES">{t.catUtilities}</option>
-            <option value="RENT">{t.catRent}</option>
-            <option value="SALARIES">{t.catSalaries}</option>
-            <option value="MAINTENANCE">{t.catMaintenance}</option>
-            <option value="OTHER">{t.catOther}</option>
+            {expenseCategories.map((cat) => (
+              <option key={cat.id || cat.code} value={cat.code}>
+                {cat.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -445,7 +471,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
 
                     {/* Category */}
                     <td className="py-2.5 px-3 font-semibold text-stone-200 whitespace-nowrap">
-                      {exp.category.replace('RAW_', '').replace('_', ' ')}
+                      {getCategoryLabel(exp.category)}
                     </td>
 
                     {/* Description & Notes */}
@@ -534,17 +560,11 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
                     onChange={(e) => setEditCategory(e.target.value as ExpenseCategory)}
                     className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-100"
                   >
-                    <option value="RAW_FLOUR">{t.catRawFlour}</option>
-                    <option value="RAW_EGGS">{t.catRawEggs}</option>
-                    <option value="RAW_CHEESE_FETA">{t.catRawCheeseFeta}</option>
-                    <option value="RAW_SUGAR_OIL">{t.catRawSugarOil}</option>
-                    <option value="PACKAGING">{t.catPackaging}</option>
-                    <option value="TRANSPORT_FUEL">{t.catTransportFuel}</option>
-                    <option value="UTILITIES">{t.catUtilities}</option>
-                    <option value="RENT">{t.catRent}</option>
-                    <option value="SALARIES">{t.catSalaries}</option>
-                    <option value="MAINTENANCE">{t.catMaintenance}</option>
-                    <option value="OTHER">{t.catOther}</option>
+                    {expenseCategories.map((cat) => (
+                      <option key={cat.id || cat.code} value={cat.code}>
+                        {cat.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -705,6 +725,101 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ onOpenRecordExpense 
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow"
               >
                 {language === 'am' ? 'አዎ ሰርዝ' : 'Delete Expense'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Management Modal */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="px-5 py-4 border-b border-stone-800 flex items-center justify-between bg-stone-850 shrink-0">
+              <div className="flex items-center gap-2">
+                <Tag className="w-5 h-5 text-amber-500" />
+                <h3 className="font-bold text-stone-100 text-base">
+                  {language === 'am' ? 'የወጪ ምድቦች ማስተዳደሪያ' : 'Expense Categories'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsCategoryModalOpen(false)}
+                className="text-stone-400 hover:text-stone-100 p-1 rounded-lg hover:bg-stone-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              <p className="text-xs text-stone-400">
+                {language === 'am'
+                  ? 'ደንበኛዎ እንደፈለጉ አዲስ የወጪ ምድብ እዚህ መመዝገብ ይችላሉ። ስሙን ብቻ ያስገቡ (በአማርኛ ወይም በእንግሊዝኛ)፤ ኮዱ በራስ-ሰር ይዘጋጃል።'
+                  : 'Add custom expense categories anytime. Simply enter the name (Amharic or English); the code is generated automatically.'}
+              </p>
+
+              {/* Add Category Form */}
+              <form onSubmit={handleCreateNewCategory} className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder={language === 'am' ? 'የምድብ ስም (ምሳሌ፡ ሰሊጥ፣ ካሚራ፣ ጽዳት)' : 'Category name (e.g. Sesame, Yeast, Cleaning)'}
+                  className="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow transition cursor-pointer flex items-center gap-1 shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{language === 'am' ? 'አስገባ' : 'Add'}</span>
+                </button>
+              </form>
+
+              {/* Categories List */}
+              <div className="space-y-2 pt-2">
+                <div className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
+                  {language === 'am' ? 'ያሉ የወጪ ምድቦች' : 'Configured Categories'} ({expenseCategories.length})
+                </div>
+                <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                  {expenseCategories.map((cat) => (
+                    <div
+                      key={cat.id || cat.code}
+                      className="flex items-center justify-between p-2.5 bg-stone-850 border border-stone-850 hover:border-stone-700 rounded-xl text-xs transition"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-stone-200">{cat.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-800 font-mono text-stone-400">
+                          {cat.code}
+                        </span>
+                      </div>
+                      {cat.isSystem ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-800 text-stone-500 font-medium">
+                          {language === 'am' ? 'መሰረታዊ' : 'Standard'}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                          title={language === 'am' ? 'ምድብ ሰርዝ' : 'Delete category'}
+                          className="p-1 text-stone-500 hover:text-rose-400 rounded hover:bg-stone-800 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-stone-800 bg-stone-850/60 flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCategoryModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-semibold cursor-pointer transition"
+              >
+                {language === 'am' ? 'ዝጋ' : 'Close'}
               </button>
             </div>
           </div>

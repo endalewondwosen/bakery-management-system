@@ -192,6 +192,23 @@ export async function initializeDatabase(): Promise<void> {
   `);
 
   await client.execute(`
+    CREATE TABLE IF NOT EXISTS expense_categories (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      is_system INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
+  await client.execute(`
+    CREATE INDEX IF NOT EXISTS idx_exp_cats_code ON expense_categories(code);
+    CREATE INDEX IF NOT EXISTS idx_exp_cats_active ON expense_categories(is_active);
+  `);
+
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS complaints (
       id TEXT PRIMARY KEY,
       complaint_number TEXT NOT NULL UNIQUE,

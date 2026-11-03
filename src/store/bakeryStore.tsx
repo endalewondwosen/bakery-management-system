@@ -14,6 +14,7 @@ import {
   OrderItem,
   Payment,
   Expense,
+  ExpenseCategoryItem,
   Complaint,
   CustomerStatementEntry,
   OrderStatus,
@@ -43,9 +44,13 @@ interface BakeryStoreContextType {
   orderItems: OrderItem[];
   payments: Payment[];
   expenses: Expense[];
+  expenseCategories: ExpenseCategoryItem[];
   complaints: Complaint[];
 
   // Actions
+  addExpenseCategory: (name: string) => ExpenseCategoryItem;
+  deleteExpenseCategory: (id: string) => void;
+  getCategoryLabel: (code: string) => string;
   createOrder: (orderData: {
     customerId: string;
     deliveryType: DeliveryType;
@@ -192,20 +197,35 @@ interface LocalDeletedMap {
   customers: string[];
   orders: string[];
   expenses: string[];
+  expenseCategories: string[];
   complaints: string[];
   products: string[];
   pricingAgreements: string[];
 }
 
+export const defaultExpenseCategories: ExpenseCategoryItem[] = [
+  { id: 'cat-raw-flour', code: 'RAW_FLOUR', name: 'Flour (ዱቄት)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'cat-raw-eggs', code: 'RAW_EGGS', name: 'Eggs (እንቁላል)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'cat-raw-cheese', code: 'RAW_CHEESE_FETA', name: 'Cheese / Feta (አይብ)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'cat-raw-sugar-oil', code: 'RAW_SUGAR_OIL', name: 'Sugar & Oil (ስኳርና ዘይት)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'cat-packaging', code: 'PACKAGING', name: 'Packaging & Bags (ማሸጊያ ፌስታል)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'cat-transport-fuel', code: 'TRANSPORT_FUEL', name: 'Fuel & Transport (ነዳጅና ትራንስፖርት)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'cat-utilities', code: 'UTILITIES', name: 'Utilities - Electric & Water (የውሃና መብራት)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'cat-rent', code: 'RENT', name: 'Bakery Premises Rent (የህንፃ ኪራይ)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'cat-salaries', code: 'SALARIES', name: 'Staff Salaries (የሰራተኞች ደመወዝ)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'cat-maintenance', code: 'MAINTENANCE', name: 'Machinery Maintenance (ጥገና)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'cat-other', code: 'OTHER', name: 'Other / Miscellaneous (ልዩ ልዩ)', isSystem: true, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+];
+
 export function getLocalDeletedIds(): LocalDeletedMap {
   if (typeof window === 'undefined') {
-    return { customers: [], orders: [], expenses: [], complaints: [], products: [], pricingAgreements: [] };
+    return { customers: [], orders: [], expenses: [], expenseCategories: [], complaints: [], products: [], pricingAgreements: [] };
   }
   try {
     const raw = localStorage.getItem(DELETED_IDS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { customers: [], orders: [], expenses: [], complaints: [], products: [], pricingAgreements: [] };
+    return raw ? JSON.parse(raw) : { customers: [], orders: [], expenses: [], expenseCategories: [], complaints: [], products: [], pricingAgreements: [] };
   } catch {
-    return { customers: [], orders: [], expenses: [], complaints: [], products: [], pricingAgreements: [] };
+    return { customers: [], orders: [], expenses: [], expenseCategories: [], complaints: [], products: [], pricingAgreements: [] };
   }
 }
 
@@ -233,7 +253,7 @@ export function mergeRemoteDeletedIds(
   try {
     const cur = getLocalDeletedIds();
     let changed = false;
-    const keys: (keyof LocalDeletedMap)[] = ['customers', 'orders', 'expenses', 'complaints', 'products', 'pricingAgreements'];
+    const keys: (keyof LocalDeletedMap)[] = ['customers', 'orders', 'expenses', 'expenseCategories', 'complaints', 'products', 'pricingAgreements'];
     for (const key of keys) {
       if (remoteDeleted[key] && Array.isArray(remoteDeleted[key])) {
         if (!cur[key]) cur[key] = [];
@@ -397,6 +417,13 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return list.filter((e: Expense) => !deletedExp.has(e.id));
   });
 
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategoryItem[]>(() => {
+    const deletedCat = new Set(getLocalDeletedIds().expenseCategories || []);
+    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}expense_categories`);
+    const list = saved ? JSON.parse(saved) : defaultExpenseCategories;
+    return list.filter((ec: ExpenseCategoryItem) => !deletedCat.has(ec.id));
+  });
+
   const [complaints, setComplaints] = useState<Complaint[]>(() => {
     const deletedComp = new Set(getLocalDeletedIds().complaints);
     const deletedCust = new Set(getLocalDeletedIds().customers);
@@ -430,6 +457,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     orderItems,
     payments,
     expenses,
+    expenseCategories,
     complaints,
     pricingAgreements,
   });
@@ -442,10 +470,11 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       orderItems,
       payments,
       expenses,
+      expenseCategories,
       complaints,
       pricingAgreements,
     };
-  }, [customers, products, orders, orderItems, payments, expenses, complaints, pricingAgreements]);
+  }, [customers, products, orders, orderItems, payments, expenses, expenseCategories, complaints, pricingAgreements]);
 
   const isSyncingRef = useRef<boolean>(false);
 
@@ -467,6 +496,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const deletedCust = new Set(localDeleted.customers);
       const deletedOrd = new Set(localDeleted.orders);
       const deletedExp = new Set(localDeleted.expenses);
+      const deletedCat = new Set(localDeleted.expenseCategories || []);
       const deletedComp = new Set(localDeleted.complaints);
       const deletedProd = new Set(localDeleted.products);
       const deletedAgr = new Set(localDeleted.pricingAgreements);
@@ -478,6 +508,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         orderItems: current.orderItems.filter(i => !deletedOrd.has(i.orderId)),
         payments: current.payments.filter(p => !deletedCust.has(p.customerId) && (!p.orderId || !deletedOrd.has(p.orderId))),
         expenses: current.expenses.filter(e => !deletedExp.has(e.id)),
+        expenseCategories: current.expenseCategories.filter(ec => !deletedCat.has(ec.id)),
         complaints: current.complaints.filter(c => !deletedComp.has(c.id) && !deletedCust.has(c.customerId)),
         pricingAgreements: current.pricingAgreements.filter(pa => !deletedAgr.has(pa.id) && !deletedCust.has(pa.customerId) && !deletedProd.has(pa.productId)),
         deletedIds: localDeleted,
@@ -493,6 +524,7 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const allDeletedCust = new Set(activeDeleted.customers);
       const allDeletedOrd = new Set(activeDeleted.orders);
       const allDeletedExp = new Set(activeDeleted.expenses);
+      const allDeletedCat = new Set(activeDeleted.expenseCategories || []);
       const allDeletedComp = new Set(activeDeleted.complaints);
       const allDeletedProd = new Set(activeDeleted.products);
       const allDeletedAgr = new Set(activeDeleted.pricingAgreements);
@@ -608,6 +640,31 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
           return JSON.stringify(prev) === JSON.stringify(combined) ? prev : combined;
         });
       }
+      if (data && data.expenseCategories && Array.isArray(data.expenseCategories)) {
+        setExpenseCategories((prev) => {
+          const serverClean = data.expenseCategories.filter(ec => !allDeletedCat.has(ec.id));
+          const processedIds = new Set<string>();
+          const merged: ExpenseCategoryItem[] = [];
+
+          for (const sCat of serverClean) {
+            processedIds.add(sCat.id);
+            const local = prev.find(c => c.id === sCat.id || c.code === sCat.code);
+            if (local && local.updatedAt && sCat.updatedAt && local.updatedAt > sCat.updatedAt) {
+              merged.push(local);
+            } else {
+              merged.push(sCat);
+            }
+          }
+
+          for (const lCat of prev) {
+            if (!processedIds.has(lCat.id) && !allDeletedCat.has(lCat.id)) {
+              merged.push(lCat);
+            }
+          }
+
+          return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
+        });
+      }
       if (data && data.complaints && Array.isArray(data.complaints)) {
         setComplaints((prev) => {
           const serverClean = data.complaints.filter(c => !allDeletedComp.has(c.id) && !allDeletedCust.has(c.customerId));
@@ -709,6 +766,10 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}expenses`, JSON.stringify(expenses));
   }, [expenses]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}expense_categories`, JSON.stringify(expenseCategories));
+  }, [expenseCategories]);
 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}complaints`, JSON.stringify(complaints));
@@ -1311,6 +1372,78 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     drainMutationQueue().then(() => syncWithServer()).catch(() => {});
   };
 
+  const addExpenseCategory = (name: string): ExpenseCategoryItem => {
+    const nowIso = new Date().toISOString();
+    const cleanName = (name || '').trim();
+    const id = `expcat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+    let baseCode = cleanName
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    if (!baseCode || baseCode.length < 2) {
+      baseCode = `CAT_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+    }
+    let code = baseCode;
+    const existing = stateRef.current.expenseCategories.find(c => c.code === code);
+    if (existing) {
+      code = `${code}_${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+    }
+
+    const newCategory: ExpenseCategoryItem = {
+      id,
+      code,
+      name: cleanName,
+      isSystem: false,
+      isActive: true,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+
+    stateRef.current.expenseCategories = [...stateRef.current.expenseCategories, newCategory];
+    setExpenseCategories(prev => {
+      const next = [...prev, newCategory];
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}expense_categories`, JSON.stringify(next));
+      return next;
+    });
+
+    enqueueMutation({
+      endpoint: '/api/expenses/categories',
+      method: 'POST',
+      body: newCategory,
+      description: `Add expense category ${cleanName}`,
+    });
+
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
+
+    return newCategory;
+  };
+
+  const deleteExpenseCategory = (id: string) => {
+    recordLocalDeletedId('expenseCategories', id);
+    stateRef.current.expenseCategories = stateRef.current.expenseCategories.filter(c => c.id !== id);
+
+    setExpenseCategories(prev => {
+      const next = prev.filter(c => c.id !== id);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}expense_categories`, JSON.stringify(next));
+      return next;
+    });
+
+    enqueueMutation({
+      endpoint: `/api/expenses/categories/${id}`,
+      method: 'DELETE',
+      description: `Delete expense category ${id}`,
+    });
+
+    drainMutationQueue().then(() => syncWithServer()).catch(() => {});
+  };
+
+  const getCategoryLabel = (categoryCode: string): string => {
+    const found = expenseCategories.find(c => c.code === categoryCode);
+    if (found) return found.name;
+    return categoryCode;
+  };
+
   const addCustomer = (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Customer => {
     const nowIso = new Date().toISOString();
     const cleanOrg = (customerData.organizationName || customerData.name || '').trim().toLowerCase();
@@ -1804,7 +1937,11 @@ export const BakeryStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         orderItems,
         payments,
         expenses,
+        expenseCategories,
         complaints,
+        addExpenseCategory,
+        deleteExpenseCategory,
+        getCategoryLabel,
         createOrder,
         repeatOrder,
         updateOrderStatus,

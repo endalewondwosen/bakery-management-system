@@ -14,6 +14,7 @@ import type {
   OrderItem,
   Payment,
   Expense,
+  ExpenseCategoryItem,
   Complaint,
   CustomerStatementEntry,
   CustomerType,
@@ -201,6 +202,13 @@ export interface CreateExpenseDto {
 
 export interface UpdateExpenseDto extends Partial<CreateExpenseDto> {}
 
+export interface CreateExpenseCategoryDto {
+  id?: string;
+  name: string;
+  code?: string;
+  updatedAt?: string;
+}
+
 // ============================================================================
 // COMPLAINT MODULE DTOs
 // ============================================================================
@@ -247,6 +255,7 @@ export interface DeletedIdsMap {
   orderItems?: string[];
   payments?: string[];
   expenses?: string[];
+  expenseCategories?: string[];
   complaints?: string[];
 }
 
@@ -258,6 +267,7 @@ export interface SyncPayloadDto {
   orderItems?: OrderItem[];
   payments?: Payment[];
   expenses?: Expense[];
+  expenseCategories?: ExpenseCategoryItem[];
   complaints?: Complaint[];
   deletedIds?: DeletedIdsMap;
 }
@@ -271,6 +281,7 @@ export interface SyncResponseDto {
   orderItems: OrderItem[];
   payments: Payment[];
   expenses: Expense[];
+  expenseCategories: ExpenseCategoryItem[];
   complaints: Complaint[];
   deletedIds: {
     customers: string[];
@@ -278,6 +289,7 @@ export interface SyncResponseDto {
     pricingAgreements: string[];
     orders: string[];
     expenses: string[];
+    expenseCategories: string[];
     complaints: string[];
   };
 }

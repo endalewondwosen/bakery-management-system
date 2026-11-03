@@ -53,6 +53,11 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
         await productService.deletePricingAgreement(id);
       }
     }
+    if (payload.deletedIds.expenseCategories && Array.isArray(payload.deletedIds.expenseCategories)) {
+      for (const id of payload.deletedIds.expenseCategories) {
+        await expenseService.deleteExpenseCategory(id);
+      }
+    }
   }
 
   // Load canonical tombstones to protect against zombie resurrection
@@ -60,6 +65,7 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   const deletedCustomerIds = new Set(tombstones.customers);
   const deletedOrderIds = new Set(tombstones.orders);
   const deletedExpenseIds = new Set(tombstones.expenses);
+  const deletedCategoryIds = new Set(tombstones.expenseCategories || []);
   const deletedComplaintIds = new Set(tombstones.complaints);
   const deletedProductIds = new Set(tombstones.products);
   const deletedAgreementIds = new Set(tombstones.pricingAgreements);
@@ -403,6 +409,48 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
     }
   }
 
+  // 8. Process incoming expense categories
+  if (payload.expenseCategories && Array.isArray(payload.expenseCategories)) {
+    for (const ec of payload.expenseCategories) {
+      if (deletedCategoryIds.has(ec.id)) {
+        continue;
+      }
+      let [existing] = await db
+        .select()
+        .from(schema.expenseCategories)
+        .where(eq(schema.expenseCategories.id, ec.id));
+
+      if (!existing && ec.code) {
+        const [byCode] = await db
+          .select()
+          .from(schema.expenseCategories)
+          .where(eq(schema.expenseCategories.code, ec.code.trim().toUpperCase()));
+        existing = byCode as typeof existing;
+      }
+
+      if (!existing) {
+        await db.insert(schema.expenseCategories).values({
+          id: ec.id,
+          code: ec.code,
+          name: ec.name,
+          isSystem: ec.isSystem || false,
+          isActive: ec.isActive !== undefined ? ec.isActive : true,
+          createdAt: ec.createdAt || now,
+          updatedAt: ec.updatedAt || now,
+        }).onConflictDoNothing();
+      } else if (ec.updatedAt && (!existing.updatedAt || ec.updatedAt > existing.updatedAt)) {
+        await db
+          .update(schema.expenseCategories)
+          .set({
+            name: ec.name,
+            isActive: ec.isActive !== undefined ? ec.isActive : existing.isActive,
+            updatedAt: ec.updatedAt,
+          })
+          .where(eq(schema.expenseCategories.id, existing.id));
+      }
+    }
+  }
+
   // Retrieve current database state across all tables
   const customers = await customerService.getAllCustomers();
   const products = await productService.getAllProducts();
@@ -410,6 +458,7 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
   const fullOrders = await orderService.getAllOrders();
   const payments = await paymentService.getAllPayments();
   const expenses = await expenseService.getAllExpenses();
+  const expenseCategories = await expenseService.getAllExpenseCategories();
   const complaints = await complaintService.getAllComplaints();
 
   const orders = fullOrders.map(({ items, ...o }) => o);
@@ -424,6 +473,7 @@ export async function processSync(payload: SyncPayloadDto): Promise<SyncResponse
     orderItems,
     payments,
     expenses,
+    expenseCategories,
     complaints,
     deletedIds: tombstones as any,
   };

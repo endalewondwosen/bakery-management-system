@@ -10,8 +10,8 @@ import { db } from '../../db/index.ts';
 import * as schema from '../../db/schema.ts';
 import { desc, eq } from 'drizzle-orm';
 import { recordTombstone } from '../../common/tombstones.ts';
-import type { Expense } from '../../../types/domain.ts';
-import type { CreateExpenseDto, UpdateExpenseDto } from '../../../types/apiContracts.ts';
+import type { Expense, ExpenseCategoryItem } from '../../../types/domain.ts';
+import type { CreateExpenseDto, UpdateExpenseDto, CreateExpenseCategoryDto } from '../../../types/apiContracts.ts';
 
 export async function getAllExpenses(): Promise<Expense[]> {
   const rows = await db.select().from(schema.expenses).orderBy(desc(schema.expenses.date));
@@ -124,6 +124,90 @@ export async function deleteExpense(id: string): Promise<boolean> {
   if (!existing) return false;
   await db.delete(schema.expenses).where(eq(schema.expenses.id, id));
   await recordTombstone('EXPENSE', id);
+  return true;
+}
+
+export function generateCategoryCode(name: string): string {
+  const cleanName = (name || '').trim();
+  const latinSlug = cleanName
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  if (latinSlug && latinSlug.length >= 2) {
+    return latinSlug.slice(0, 32);
+  }
+
+  // If Amharic or non-latin characters, generate clean CAT_ prefix + unique uppercase hash
+  const uniqueSuffix = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase();
+  return `CAT_${uniqueSuffix}`;
+}
+
+export async function getAllExpenseCategories(): Promise<ExpenseCategoryItem[]> {
+  const rows = await db.select().from(schema.expenseCategories);
+  return rows.map((r) => ({
+    id: r.id,
+    code: r.code,
+    name: r.name,
+    isSystem: Boolean(r.isSystem),
+    isActive: Boolean(r.isActive),
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  }));
+}
+
+export async function createExpenseCategory(dto: CreateExpenseCategoryDto): Promise<ExpenseCategoryItem> {
+  const now = dto.updatedAt || new Date().toISOString();
+  const id = dto.id?.trim() || `expcat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+  let code = (dto.code || '').trim().toUpperCase();
+  if (!code) {
+    code = generateCategoryCode(dto.name);
+  }
+
+  // Ensure code uniqueness
+  const [existingCode] = await db
+    .select()
+    .from(schema.expenseCategories)
+    .where(eq(schema.expenseCategories.code, code));
+  if (existingCode) {
+    code = `${code}_${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+  }
+
+  const newCat: ExpenseCategoryItem = {
+    id,
+    code,
+    name: dto.name.trim(),
+    isSystem: false,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await db.insert(schema.expenseCategories).values({
+    id: newCat.id,
+    code: newCat.code,
+    name: newCat.name,
+    isSystem: newCat.isSystem || false,
+    isActive: newCat.isActive,
+    createdAt: newCat.createdAt,
+    updatedAt: newCat.updatedAt,
+  });
+
+  return newCat;
+}
+
+export async function deleteExpenseCategory(id: string): Promise<boolean> {
+  const [existing] = await db.select().from(schema.expenseCategories).where(eq(schema.expenseCategories.id, id));
+  if (!existing) return false;
+
+  // Protect system categories
+  if (existing.isSystem) {
+    return false;
+  }
+
+  await db.delete(schema.expenseCategories).where(eq(schema.expenseCategories.id, id));
+  await recordTombstone('EXPENSE_CATEGORY', id);
   return true;
 }
 

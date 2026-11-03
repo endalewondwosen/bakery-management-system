@@ -169,6 +169,22 @@ export const expenses = sqliteTable('expenses', {
 ]);
 
 // ============================================================================
+// 7B. EXPENSE CATEGORIES TABLE (Dynamic Cost Centres Configured by Client)
+// ============================================================================
+export const expenseCategories = sqliteTable('expense_categories', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  isSystem: integer('is_system', { mode: 'boolean' }).notNull().default(false),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [
+  index('idx_exp_cats_code').on(table.code),
+  index('idx_exp_cats_active').on(table.isActive),
+]);
+
+// ============================================================================
 // 8. COMPLAINTS TABLE (Customer Feedback & Quality Assurance)
 // ============================================================================
 export const complaints = sqliteTable('complaints', {

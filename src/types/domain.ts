@@ -149,6 +149,16 @@ export interface Payment {
   recordedBy: string;
 }
 
+export interface ExpenseCategoryItem {
+  id: string;
+  code: string;
+  name: string;
+  isSystem?: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type ExpenseCategory = 
   | 'RAW_FLOUR' 
   | 'RAW_EGGS' 
@@ -160,7 +170,8 @@ export type ExpenseCategory =
   | 'RENT' 
   | 'SALARIES' 
   | 'MAINTENANCE' 
-  | 'OTHER';
+  | 'OTHER'
+  | (string & {});
 
 export type ExpensePeriod = 'DAILY' | 'MONTHLY' | 'YEARLY';
 

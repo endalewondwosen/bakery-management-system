@@ -10,6 +10,15 @@ import * as expenseController from './expense.controller.ts';
 
 export const expenseRouter = Router();
 
+// GET /api/expenses/categories
+expenseRouter.get('/categories', expenseController.getExpenseCategories);
+
+// POST /api/expenses/categories
+expenseRouter.post('/categories', expenseController.createExpenseCategory);
+
+// DELETE /api/expenses/categories/:id
+expenseRouter.delete('/categories/:id', expenseController.deleteExpenseCategory);
+
 // GET /api/expenses
 expenseRouter.get('/', expenseController.getExpenses);
 
